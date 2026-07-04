@@ -699,9 +699,12 @@ This project is licensed under the **MIT License**.
 
 <br/>
 
+<div align="center">
+
 [![GitHub](https://img.shields.io/badge/GitHub-dhruvnayak001-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/dhruvnayak001)
-&nbsp;&nbsp;
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](#)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Dhruv%20Nayak-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/dhruv-nayak-32a9682a8)
+
+</div>
 
 <br/>
 
