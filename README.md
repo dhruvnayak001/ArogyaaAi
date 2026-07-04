@@ -667,7 +667,7 @@ Before going live, verify:
 
 </div>
 
-We welcome contributions! Here's how to get started:
+Welcome contributions! Here's how to get started:
 
 ```bash
 # Fork the repo, then:
