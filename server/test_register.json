@@ -1,0 +1,6 @@
+{
+    "name": "Test User",
+    "email": "test@arogyaai.dev",
+    "password": "TestPass123",
+    "role": "patient"
+}

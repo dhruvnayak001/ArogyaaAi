@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArogyaAI — Final Hackathon Presentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0a0e1a;
+      --surface: #111827;
+      --surface-2: #1e293b;
+      --border: rgba(255,255,255,0.08);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --dim: #64748b;
+      --primary: #0694a2;
+      --primary-l: #14b8a6;
+      --accent: #7c3aed;
+      --accent-l: #a78bfa;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --success: #10b981;
+      --grad: linear-gradient(135deg, #0694a2, #7c3aed);
+      --grad-s: linear-gradient(135deg, rgba(6,148,162,0.15), rgba(124,58,237,0.15));
+    }
+    body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); overflow:hidden; height:100vh; width:100vw; }
+    .deck { position:relative; width:100vw; height:100vh; }
+    .slide {
+      position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center;
+      padding:56px 96px; opacity:0; transform:translateX(30px);
+      transition:opacity .45s ease,transform .45s ease; pointer-events:none; overflow-y:auto;
+    }
+    .slide.active { opacity:1; transform:translateX(0); pointer-events:auto; }
+    .progress { position:fixed; top:0; left:0; height:3px; background:var(--grad); transition:width .4s ease; z-index:100; }
+    .counter { position:fixed; bottom:20px; right:28px; font-size:12px; color:var(--dim); font-weight:600; z-index:100; font-variant-numeric:tabular-nums; }
+    .hint { position:fixed; bottom:20px; left:28px; font-size:10px; color:var(--dim); z-index:100; opacity:.5; }
+
+    /* Notes */
+    .notes-p { position:fixed; bottom:0; left:0; right:0; background:rgba(0,0,0,.93); backdrop-filter:blur(12px); border-top:1px solid var(--border); padding:16px 36px; font-size:13px; line-height:1.7; color:var(--muted); z-index:200; transform:translateY(100%); transition:transform .3s ease; max-height:180px; overflow-y:auto; }
+    .notes-p.vis { transform:translateY(0); }
+    .notes-p .nl { font-size:9px; text-transform:uppercase; letter-spacing:1.5px; color:var(--primary); margin-bottom:6px; font-weight:700; }
+
+    /* Type */
+    h1 { font-size:52px; font-weight:900; line-height:1.1; letter-spacing:-1.5px; }
+    h2 { font-size:36px; font-weight:800; line-height:1.2; letter-spacing:-.8px; margin-bottom:20px; }
+    h3 { font-size:22px; font-weight:700; margin-bottom:14px; }
+    p,li { font-size:17px; line-height:1.7; color:var(--muted); }
+    .sub { font-size:19px; color:var(--muted); margin-top:10px; font-weight:400; }
+    .gt { background:var(--grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .tag { display:inline-block; padding:4px 14px; border-radius:100px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; border:1px solid; }
+    .tp { border-color:var(--primary); color:var(--primary); background:rgba(6,148,162,.1); }
+    .ta { border-color:var(--accent); color:var(--accent-l); background:rgba(124,58,237,.1); }
+    .td { border-color:var(--danger); color:var(--danger); background:rgba(239,68,68,.1); }
+    .ts { border-color:var(--success); color:var(--success); background:rgba(16,185,129,.1); }
+    .tw { border-color:var(--warning); color:var(--warning); background:rgba(245,158,11,.1); }
+    .cite { font-size:9px; vertical-align:super; color:var(--primary); font-weight:600; cursor:help; }
+
+    /* Layout */
+    .g2 { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+    .g3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; }
+    .g4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+    .mt20 { margin-top:20px; } .mt24 { margin-top:24px; } .mt32 { margin-top:32px; }
+    .mb12 { margin-bottom:12px; } .mb16 { margin-bottom:16px; } .mb8 { margin-bottom:8px; }
+
+    /* Card */
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:24px; }
+
+    /* Stat */
+    .sbox { text-align:center; padding:24px 16px; background:var(--surface); border-radius:16px; border:1px solid var(--border); }
+    .sbox .sn { font-size:38px; font-weight:900; background:var(--grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent; display:block; margin-bottom:6px; }
+    .sbox .sl { font-size:13px; color:var(--muted); line-height:1.5; }
+
+    /* Feature list */
+    .fl { list-style:none; }
+    .fl li { display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); font-size:16px; }
+    .fl li:last-child { border-bottom:none; }
+    .fl .ic { font-size:20px; flex-shrink:0; margin-top:2px; }
+
+    /* Pipeline */
+    .pipe { display:flex; align-items:stretch; gap:0; margin-top:20px; }
+    .ps { flex:1; background:var(--surface); border:1px solid var(--border); padding:16px 14px; text-align:center; position:relative; }
+    .ps:first-child { border-radius:12px 0 0 12px; }
+    .ps:last-child { border-radius:0 12px 12px 0; }
+    .ps .pi { font-size:26px; margin-bottom:6px; display:block; }
+    .ps .pt { font-size:12px; font-weight:700; color:var(--text); margin-bottom:3px; }
+    .ps .pd { font-size:10px; color:var(--dim); line-height:1.4; }
+    .ps::after { content:'→'; position:absolute; right:-13px; top:50%; transform:translateY(-50%); font-size:18px; color:var(--primary); z-index:2; font-weight:700; }
+    .ps:last-child::after { display:none; }
+
+    /* Code */
+    .code { background:#0d1117; border:1px solid rgba(255,255,255,.06); border-radius:12px; padding:18px 22px; font-family:'JetBrains Mono','Fira Code',monospace; font-size:12px; line-height:1.55; color:#c9d1d9; overflow-x:auto; white-space:pre; }
+    .code .k { color:#79c0ff; } .code .s { color:#a5d6ff; } .code .v { color:#7ee787; }
+
+    /* Table */
+    .ct { width:100%; border-collapse:collapse; font-size:13px; margin-top:16px; }
+    .ct th { text-align:left; padding:10px 14px; background:var(--surface-2); color:var(--text); font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:.5px; border-bottom:2px solid var(--border); }
+    .ct td { padding:9px 14px; border-bottom:1px solid var(--border); color:var(--muted); }
+    .ct tr:last-child td { border-bottom:none; }
+    .ct .hr { background:rgba(6,148,162,.08); }
+    .ct .hr td { color:var(--primary-l); font-weight:600; }
+    .ct .ck { color:var(--success); font-weight:700; }
+    .ct .cx { color:var(--dim); }
+
+    /* Win card */
+    .wc { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:22px; display:flex; align-items:flex-start; gap:14px; }
+    .wi { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+    .wc h4 { font-size:15px; font-weight:700; margin-bottom:4px; color:var(--text); }
+    .wc p { font-size:12px; color:var(--muted); line-height:1.5; }
+
+    /* Title bg */
+    .s-title { justify-content:center; align-items:center; text-align:center; }
+    .s-title::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse at 30% 40%,rgba(6,148,162,.12) 0%,transparent 60%),radial-gradient(ellipse at 70% 60%,rgba(124,58,237,.1) 0%,transparent 50%); pointer-events:none; }
+
+    /* Thank you bg */
+    .s-ty { text-align:center; justify-content:center; align-items:center; }
+    .s-ty::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse at 50% 50%,rgba(6,148,162,.15) 0%,transparent 60%),radial-gradient(ellipse at 50% 50%,rgba(124,58,237,.08) 0%,transparent 70%); pointer-events:none; }
+
+    /* Doctor feature grid */
+    .df { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .dfc { padding:16px; background:var(--surface); border:1px solid var(--border); border-radius:14px; display:flex; align-items:flex-start; gap:12px; }
+    .dfc .di { font-size:24px; flex-shrink:0; }
+    .dfc h4 { font-size:14px; font-weight:700; color:var(--text); margin-bottom:3px; }
+    .dfc p { font-size:11px; color:var(--dim); line-height:1.4; }
+
+    /* Future scope */
+    .fs-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+    .fs-item { padding:16px; background:var(--surface); border:1px solid var(--border); border-radius:14px; text-align:center; }
+    .fs-item .fs-icon { font-size:28px; margin-bottom:8px; display:block; }
+    .fs-item .fs-title { font-size:13px; font-weight:700; color:var(--text); margin-bottom:4px; }
+    .fs-item .fs-tag { font-size:9px; color:var(--dim); text-transform:uppercase; letter-spacing:.8px; }
+
+    /* Screenshot placeholder */
+    .ss-placeholder {
+      background: linear-gradient(135deg, rgba(6,148,162,0.06) 0%, rgba(124,58,237,0.06) 100%);
+      border: 1px dashed rgba(255,255,255,0.12);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 8px;
+      color: var(--dim);
+      font-size: 12px;
+      min-height: 200px;
+      padding: 20px;
+    }
+    .ss-placeholder .ss-icon { font-size: 32px; opacity: 0.5; }
+    .ss-placeholder .ss-label { font-weight: 600; color: var(--muted); font-size: 13px; }
+    .ss-placeholder .ss-hint { font-size: 10px; max-width: 200px; text-align: center; }
+  </style>
+</head>
+<body>
+
+<div class="progress" id="prog"></div>
+<div class="counter" id="cnt"></div>
+<div class="hint">← → Navigate &nbsp;|&nbsp; N = Notes</div>
+<div class="notes-p" id="np"><div class="nl">Speaker Notes</div><div id="nc"></div></div>
+
+<div class="deck" id="deck">
+
+<!-- ═══════════════════════════════════════════════ 
+     SLIDE 1: TITLE
+     ═══════════════════════════════════════════════ -->
+<div class="slide s-title" data-notes="Say the name clearly. Pause. Deliver the subtitle. You have 10 seconds — use them to set the tone that this is a serious healthcare project, not a weekend hack.">
+  <div style="position:relative;z-index:1">
+    <div class="tag tp mb16">AI-Powered Healthcare Platform</div>
+    <h1 style="font-size:68px;margin-bottom:12px"><span class="gt">ArogyaAI</span></h1>
+    <p class="sub" style="font-size:20px;max-width:700px;margin:0 auto">
+      From patient symptoms to doctor-ready clinical briefs — <br>in any language, before the consultation begins.
+    </p>
+    <div style="margin-top:36px;color:var(--dim);font-size:13px">
+      <!-- ✏️ UPDATE: Your team name and hackathon name -->
+      Team Name &nbsp;•&nbsp; Hackathon 2026
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 2: THE PROBLEM — Human Story
+     ═══════════════════════════════════════════════ -->
+<div class="slide" data-notes="Tell Ramesh's story. Don't read bullets — narrate. 'Ramesh is 58. Diabetic. He waited 3 hours at a government hospital. When he finally saw a doctor, the consultation lasted 90 seconds. The doctor didn't open his lab report folder. Ramesh went home undiagnosed. Six months later, he was hospitalized for diabetic complications. This isn't rare. This is the norm for hundreds of millions of Indians.' Pause. Let it land. Then move forward.">
+  <div class="tag td mb16">The Problem</div>
+  <h2>Meet <span class="gt">Ramesh</span></h2>
+  <div class="g2 mt24">
+    <div>
+      <div class="card" style="background:linear-gradient(135deg,var(--surface) 0%,rgba(239,68,68,.04) 100%);border-color:rgba(239,68,68,.15);margin-bottom:20px">
+        <p style="font-size:17px;color:var(--text);line-height:1.8;font-style:italic">
+          "Ramesh is 58. He carried a folder of lab reports to a government hospital.
+          He waited <strong style="color:var(--danger)">3 hours</strong>.
+          His consultation lasted <strong style="color:var(--danger)">90 seconds</strong>.
+          The doctor never opened his folder.
+          Ramesh has undiagnosed diabetes."
+        </p>
+        <p style="font-size:14px;color:var(--dim);margin-top:12px">This isn't rare. This is the norm.</p>
+      </div>
+      <ul class="fl">
+        <li>
+          <span class="ic">⏱️</span>
+          <div><strong style="color:var(--text)">Under 2 minutes</strong> — average consultation time in India<span class="cite" title="Irving et al., BMJ Open 2017">[1]</span></div>
+        </li>
+        <li>
+          <span class="ic">📄</span>
+          <div><strong style="color:var(--text)">Paper reports ignored</strong> — doctors have no time to read unstructured documents</div>
+        </li>
+        <li>
+          <span class="ic">🗣️</span>
+          <div><strong style="color:var(--text)">Language barrier</strong> — most Indians don't speak English<span class="cite" title="Estimate from Census 2011">[est.]</span>, yet health AI is English-only</div>
+        </li>
+      </ul>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="sbox">
+        <span class="sn">1:1,457</span>
+        <span class="sl">Doctor-patient ratio<br><small style="color:var(--dim)">WHO recommends 1:1,000<span class="cite" title="WHO Global Health Workforce Statistics">[2]</span></small></span>
+      </div>
+      <div class="sbox">
+        <span class="sn">~63%</span>
+        <span class="sl">Out-of-pocket health spending<br><small style="color:var(--dim)">NHA 2019–20<span class="cite" title="National Health Accounts, WHO GHED">[3]</span></small></span>
+      </div>
+      <div class="sbox">
+        <span class="sn">22</span>
+        <span class="sl">Official languages in India<br><small style="color:var(--dim)">Health AI speaks 1</small></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 3: OUR SOLUTION
+     ═══════════════════════════════════════════════ -->
+<div class="slide" data-notes="Transition: 'What if Ramesh could describe his symptoms in Hindi? What if the AI could read his lab report AND tell the doctor what's wrong — before Ramesh walks in?' Then deliver the three pillars in 20 seconds. Keep it tight.">
+  <div class="tag tp mb16">Our Solution</div>
+  <h2><span class="gt">ArogyaAI</span> — Making Every 2 Minutes Count</h2>
+  <p style="font-size:18px;max-width:800px;margin-bottom:28px">
+    An end-to-end AI platform that speaks the patient's language, understands their documents, and prepares the doctor — before the consultation begins.
+  </p>
+  <div class="g3">
+    <div class="card" style="text-align:center">
+      <div style="font-size:38px;margin-bottom:10px">🗣️</div>
+      <h3 style="font-size:17px;margin-bottom:6px">Speak Your Language</h3>
+      <p style="font-size:13px">Voice input in Hindi, Marathi, English — even mixed Hinglish</p>
+    </div>
+    <div class="card" style="text-align:center;border-color:rgba(6,148,162,.2)">
+      <div style="font-size:38px;margin-bottom:10px">🧠</div>
+      <h3 style="font-size:17px;margin-bottom:6px">AI Understands Reports</h3>
+      <p style="font-size:13px">Lab values extracted with AI self-assessment indicators you can verify</p>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:38px;margin-bottom:10px">👨‍⚕️</div>
+      <h3 style="font-size:17px;margin-bottom:6px">Doctor Gets a Brief</h3>
+      <p style="font-size:13px">Structured clinical copilot with urgency, conditions, and focus areas</p>
+    </div>
+  </div>
+  <div class="card mt24" style="background:var(--grad-s);border-color:rgba(6,148,162,.2)">
+    <p style="font-size:15px;text-align:center;color:var(--primary-l)">
+      💡 <strong>Key:</strong> These aren't separate apps. It's one integrated pipeline — symptoms → documents → booking → AI copilot brief → doctor.
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 4: PATIENT JOURNEY
+     ═══════════════════════════════════════════════ -->
+<div class="slide" data-notes="Walk through the 5 steps. Point at each one. Emphasize that every stage feeds the next. The key line: 'The doctor never starts a consultation cold.' This is the slide where judges understand the full picture before you deep-dive.">
+  <div class="tag tp mb16">How It Works</div>
+  <h2>The Patient Journey — End to End</h2>
+  <div class="pipe mt24">
+    <div class="ps">
+      <span class="pi">🗣️</span>
+      <div class="pt">Describe Symptoms</div>
+      <div class="pd">Voice or text<br>Hindi / Marathi / English</div>
+    </div>
+    <div class="ps">
+      <span class="pi">📄</span>
+      <div class="pt">Upload Reports</div>
+      <div class="pd">PDF / image<br>Lab reports, prescriptions</div>
+    </div>
+    <div class="ps">
+      <span class="pi">🤖</span>
+      <div class="pt">AI Analyzes</div>
+      <div class="pd">OCR + Gemini<br>AI quality indicators</div>
+    </div>
+    <div class="ps">
+      <span class="pi">✅</span>
+      <div class="pt">Patient Verifies</div>
+      <div class="pd">Review & correct<br>Human-in-the-loop</div>
+    </div>
+    <div class="ps">
+      <span class="pi">👨‍⚕️</span>
+      <div class="pt">Doctor Gets Brief</div>
+      <div class="pd">AI Copilot output<br>Urgency + conditions</div>
+    </div>
+  </div>
+
+  <!-- Screenshot recommendation -->
+  <div class="g2 mt32">
+    <div class="ss-placeholder">
+      <span class="ss-icon">📱</span>
+      <span class="ss-label">Screenshot: Patient Dashboard</span>
+      <span class="ss-hint">Capture from /dashboard — show the health records + appointments overview</span>
+    </div>
+    <div class="ss-placeholder">
+      <span class="ss-icon">👨‍⚕️</span>
+      <span class="ss-label">Screenshot: Doctor Dashboard</span>
+      <span class="ss-hint">Capture from /doctor/dashboard — show today's appointments with AI brief badges</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 5: AI PRE-CONSULTATION COPILOT ⭐
+     ═══════════════════════════════════════════════ -->
+<div class="slide" data-notes="THIS IS YOUR STAR SLIDE. Spend 60+ seconds here. Say: 'This is our most important innovation. When a patient books an appointment, our AI combines their spoken symptoms — even in Hindi — with data from uploaded lab reports, and generates THIS.' Point to the JSON. Read the key fields aloud: 'Urgency: MEDIUM. Conditions: Anemia, Viral fever. Hemoglobin 8.2 — flagged as below normal range. Focus areas: complete blood count, iron studies. The doctor sees ALL of this before the patient walks in.' Pause. Then: 'No consumer health app does this today.'">
+  <div class="tag ta mb16">⭐ Key Innovation #1</div>
+  <h2>AI Pre-Consultation <span class="gt">Copilot</span></h2>
+  <div class="g2 mt24">
+    <div>
+      <p class="mb16" style="font-size:15px">
+        Before the appointment, AI synthesizes symptoms + reports into a <strong style="color:var(--text)">structured clinical brief</strong> the doctor reviews before the patient walks in.
+      </p>
+      <ul class="fl" style="font-size:14px">
+        <li><span class="ic">🗣️</span><div>Accepts symptoms in Hindi, Marathi, English</div></li>
+        <li><span class="ic">📊</span><div>Correlates with uploaded report data</div></li>
+        <li><span class="ic">🚨</span><div>Assigns urgency: LOW → CRITICAL</div></li>
+        <li><span class="ic">🎯</span><div>Suggests focus areas + recommended specialty</div></li>
+        <li><span class="ic">🔬</span><div>Flags abnormal lab values with normal ranges</div></li>
+        <li><span class="ic">📈</span><div>Analysis reliability indicator (HIGH / MEDIUM / LOW)</div></li>
+      </ul>
+      <p style="font-size:11px;color:var(--dim);margin-top:12px;line-height:1.5">
+        ⚠️ Advisory output only — not a clinical diagnosis. Always reviewed by the consulting physician.
+      </p>
+    </div>
+    <div class="code" style="font-size:11.5px;line-height:1.5">
+{
+  <span class="k">"summaryText"</span>: <span class="s">"Patient reports fever and headache for 3 days. Lab reports indicate low hemoglobin."</span>,
+  <span class="k">"symptoms"</span>: [<span class="s">"fever"</span>, <span class="s">"headache"</span>, <span class="s">"fatigue"</span>],
+  <span class="k">"symptomTimeline"</span>: <span class="s">"3 days"</span>,
+
+  <span class="k">"urgencyLevel"</span>: <span class="v">"MEDIUM"</span>,
+  <span class="k">"conditions"</span>: [<span class="s">"Anemia"</span>, <span class="s">"Viral fever"</span>],
+
+  <span class="k">"suggestedFocusAreas"</span>: [
+    <span class="s">"Complete blood count"</span>,
+    <span class="s">"Iron studies"</span>
+  ],
+  <span class="k">"abnormalValues"</span>: [{
+    <span class="k">"parameter"</span>: <span class="s">"Hemoglobin"</span>,
+    <span class="k">"value"</span>: <span class="s">"8.2 g/dL"</span>,
+    <span class="k">"normalRange"</span>: <span class="s">"12.0–17.5 g/dL"</span>
+  }],
+  <span class="k">"analysisReliability"</span>: <span class="v">"HIGH"</span>,
+  <span class="k">"recommendedSpecialty"</span>: <span class="s">"General Physician"</span>
+}</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 6: MEDICAL DOCUMENT INTELLIGENCE ⭐
+     (FIXED: confidence language, no RLHF claim)
+     ═══════════════════════════════════════════════ -->
+<div class="slide" data-notes="Technical depth slide. Walk through the pipeline. Key language change: say 'AI self-assessment indicators' NOT 'confidence scores.' Say: 'When a patient uploads a lab report, we extract text — pdf-parse for digital PDFs, Gemini Vision for scanned documents. The AI then returns structured data with self-assessment indicators. Green means the AI is confident in its extraction. Amber means double-check recommended. Red means the patient should verify that value. The patient can edit any field. We track every correction — building a dataset for future model improvement.' Do NOT say RLHF.">
+  <div class="tag ta mb16">⭐ Key Innovation #2</div>
+  <h2>Medical Document <span class="gt">Intelligence</span></h2>
+  <div class="pipe mt20" style="font-size:12px">
+    <div class="ps">
+      <span class="pi">📄</span>
+      <div class="pt">Upload</div>
+      <div class="pd">PDF or Image</div>
+    </div>
+    <div class="ps">
+      <span class="pi">📝</span>
+      <div class="pt">Extract Text</div>
+      <div class="pd">pdf-parse → Gemini<br>Vision OCR fallback</div>
+    </div>
+    <div class="ps">
+      <span class="pi">🧠</span>
+      <div class="pt">AI Analysis</div>
+      <div class="pd">Structured JSON +<br>quality indicators</div>
+    </div>
+    <div class="ps">
+      <span class="pi">✅</span>
+      <div class="pt">Patient Verifies</div>
+      <div class="pd">🟢 🟡 🔴 visual cues<br>Edit & correct</div>
+    </div>
+    <div class="ps">
+      <span class="pi">👨‍⚕️</span>
+      <div class="pt">Doctor Summary</div>
+      <div class="pd">Auto-generated<br>clinical summary</div>
+    </div>
+  </div>
+  <div class="g3 mt24">
+    <div class="card">
+      <h3 style="font-size:14px;color:var(--primary-l)">🟢 High — AI Self-Assessment</h3>
+      <p style="font-size:12px">Score ≥ 0.8 — AI reports high extraction certainty</p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:14px;color:var(--warning)">🟡 Medium — Verify Recommended</h3>
+      <p style="font-size:12px">Score 0.5–0.8 — patient should double-check this value</p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:14px;color:var(--danger)">🔴 Low — Manual Check Needed</h3>
+      <p style="font-size:12px">Score &lt; 0.5 — patient should enter the correct value</p>
+    </div>
+  </div>
+  <div class="g2 mt24">
+    <div class="ss-placeholder" style="min-height:160px">
+      <span class="ss-icon">🖥️</span>
+      <span class="ss-label">Screenshot: Verification Modal</span>
+      <span class="ss-hint">Capture the MedicalVerificationModal showing green/amber/red indicators on extracted values</span>
+    </div>
+    <div style="display:flex;flex-direction:column;justify-content:center">
+      <p style="font-size:13px;color:var(--muted);line-height:1.7">
+        <strong style="color:var(--text)">Honest note:</strong> These indicators are AI-generated, not clinically validated against ground truth. They serve as <em>attention signals</em> — helping patients identify which values to double-check.
+      </p>
+      <p style="font-size:12px;color:var(--dim);margin-top:10px">
+        📊 Patient corrections are tracked for future model improvement.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 7: MULTILINGUAL VOICE INPUT ⭐
+     ═══════════════════════════════════════════════ -->
+<div class="slide" data-notes="This is your demo moment. Say: 'India has 22 languages. Most health AI is English-only. A patient can open ArogyaAI and say...' Then actually speak in Hindi: 'mujhe 3 din se bukhar hai aur seene mein dard ho raha hai.' Point to the screen: 'Live transcript appears instantly. The AI detected chest pain as an urgency keyword and flagged it. And the AI normalizes everything to clinical English for the doctor.' If mic works on the presentation laptop, demo it live. If not, show the pre-recorded flow.">
+  <div class="tag ta mb16">⭐ Key Innovation #3</div>
+  <h2>Multilingual <span class="gt">Voice-First</span> Input</h2>
+  <div class="g2 mt24">
+    <div>
+      <p class="mb16" style="font-size:15px">
+        Patients describe symptoms by <strong style="color:var(--text)">speaking naturally</strong> — in their own language. The AI mirrors the language and normalizes for doctors.
+      </p>
+      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+        <div class="tag tp">🇬🇧 English</div>
+        <div class="tag ta">🇮🇳 हिंदी</div>
+        <div class="tag ts">🇮🇳 मराठी</div>
+      </div>
+      <ul class="fl" style="font-size:14px">
+        <li><span class="ic">🎤</span><div>Real-time live transcription (browser-native speech recognition)</div></li>
+        <li><span class="ic">🔄</span><div>AI mirrors input language in responses</div></li>
+        <li><span class="ic">⚠️</span><div>Urgency keywords (chest pain, breathlessness) trigger instant alerts</div></li>
+        <li><span class="ic">🏷️</span><div>Quick-pick symptom tags for common conditions</div></li>
+        <li><span class="ic">🌐</span><div>Hinglish (mixed Hindi-English) handled naturally</div></li>
+      </ul>
+    </div>
+    <div class="card" style="background:linear-gradient(180deg,var(--surface) 0%,rgba(6,148,162,.06) 100%)">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--grad);display:inline-flex;align-items:center;justify-content:center;font-size:28px">🎤</div>
+      </div>
+      <div style="background:rgba(0,0,0,.3);border-radius:12px;padding:14px;margin-bottom:12px">
+        <p style="font-size:12px;color:var(--dim);margin-bottom:6px">Voice Input (Hindi):</p>
+        <p style="font-size:15px;color:var(--text);line-height:1.6">
+          "मुझे 3 दिन से बुखार और सिरदर्द है, और सीने में दर्द हो रहा है"
+        </p>
+      </div>
+      <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:10px">
+        <p style="font-size:12px;color:var(--danger)">⚠️ <strong>Urgent symptom detected:</strong> chest pain — call 112 if emergency</p>
+      </div>
+      <div style="background:rgba(0,0,0,.3);border-radius:12px;padding:14px;margin-top:10px">
+        <p style="font-size:12px;color:var(--dim);margin-bottom:4px">AI normalizes for doctor's brief:</p>
+        <p style="font-size:13px;color:var(--primary-l)">→ fever, headache, chest pain (3-day duration)</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 8: DOCTOR'S AI COMMAND CENTER (NEW)
+     ═══════════════════════════════════════════════ -->
+<div class="slide" data-notes="Show the doctor's side. Say: 'So far we've shown the patient's journey. Here's what the doctor sees.' Point to PatientView360: 'An AI-powered 360-degree patient view. Risk badge — the AI assigns a risk level. Current symptoms, conditions, allergies — all in one snapshot. The consultation prep panel shows suggested focus areas and flags new symptoms since the last visit. Below, the doctor sees biomarker trend charts, a health timeline, and can view the actual uploaded reports inline. The doctor has everything they need BEFORE the patient walks in. Emergency triage is also built in — if a patient reports critical symptoms through our emergency page, the AI classifies severity into 4 levels and recommends whether to call emergency services.' This slide closes the loop from patient to doctor.">
+  <div class="tag tp mb16">The Doctor's View</div>
+  <h2>AI-Powered <span class="gt">Patient 360°</span></h2>
+  <p style="font-size:15px;margin-bottom:20px">When the doctor opens a patient profile, they see an AI Command Center — not a blank chart.</p>
+  <div class="df">
+    <div class="dfc">
+      <span class="di">🧠</span>
+      <div>
+        <h4>AI Patient Snapshot</h4>
+        <p>Risk badge (LOW→CRITICAL), current symptoms, conditions, allergies — one hero view with the AI pre-consultation brief</p>
+      </div>
+    </div>
+    <div class="dfc">
+      <span class="di">🎯</span>
+      <div>
+        <h4>Consultation Prep Panel</h4>
+        <p>AI-suggested focus areas, new symptoms since last visit, resolved symptoms, recent abnormal findings</p>
+      </div>
+    </div>
+    <div class="dfc">
+      <span class="di">📈</span>
+      <div>
+        <h4>Health Trends</h4>
+        <p>Biomarker trend charts (hemoglobin, glucose, cholesterol, etc.) with SVG line charts showing history</p>
+      </div>
+    </div>
+    <div class="dfc">
+      <span class="di">📋</span>
+      <div>
+        <h4>Health Timeline</h4>
+        <p>Chronological patient history — appointments, reports, risk levels — with inline document viewer</p>
+      </div>
+    </div>
+    <div class="dfc">
+      <span class="di">📄</span>
+      <div>
+        <h4>Uploaded Reports Viewer</h4>
+        <p>View PDFs and images inline. See AI analysis severity and extraction data for each report.</p>
+      </div>
+    </div>
+    <div class="dfc">
+      <span class="di">🚨</span>
+      <div>
+        <h4>Emergency Triage</h4>
+        <p>Patient-facing emergency page with 4-level AI severity classification (CRITICAL/HIGH/MODERATE/LOW) and 112 quick-dial</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screenshot recommendation -->
+  <div class="ss-placeholder mt24" style="min-height:140px">
+    <span class="ss-icon">🖥️</span>
+    <span class="ss-label">Screenshot: PatientView360 — AI Snapshot Hero</span>
+    <span class="ss-hint">Capture /doctor/patients/:id/360 showing the risk badge, symptoms, conditions, and AI brief summary. This is your most impressive UI.</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 9: UNDER THE HOOD (MERGED: Arch + Resilience + Security)
+     ═══════════════════════════════════════════════ -->
+<div class="slide" data-notes="Spend 25 seconds max. Say: 'Quick look under the hood. React frontend, Express backend with a dedicated services layer — this is where all the AI logic lives. We use a 4-model Gemini fallback chain — when one model hits its daily quota, we automatically fail over to the next, with exhaustion caching so we never waste API calls. Security: Helmet, MongoDB injection prevention, rate limiting, JWT auth. Built with deployment in mind.' Move on. Do not linger. This is a trust-building slide, not a feature slide.">
+  <div class="tag tp mb16">Under the Hood</div>
+  <h2>Technical Foundation</h2>
+  <div class="g3 mt24">
+    <div class="card" style="border-top:3px solid #61DAFB">
+      <h3 style="font-size:15px;color:#61DAFB">Frontend</h3>
+      <p style="font-size:13px">React 18 + Vite<br>Tailwind CSS + Framer Motion<br>Zustand state management<br>Browser-native voice API<br>Lazy-loaded routes</p>
+    </div>
+    <div class="card" style="border-top:3px solid var(--success)">
+      <h3 style="font-size:15px;color:var(--success)">Backend</h3>
+      <p style="font-size:13px">Node.js + Express.js<br>Modular service layer<br>JWT + OTP authentication<br>Cron-based reminders<br>Role-based access (patient/doctor)</p>
+    </div>
+    <div class="card" style="border-top:3px solid var(--accent)">
+      <h3 style="font-size:15px;color:var(--accent-l)">AI & Data</h3>
+      <p style="font-size:13px">Google Gemini API<br>4-model fallback chain<br>MongoDB Atlas<br>Cloudinary CDN<br>Nodemailer (email)</p>
+    </div>
+  </div>
+  <div class="g2 mt24">
+    <div class="card" style="padding:18px">
+      <h3 style="font-size:14px;margin-bottom:10px;color:var(--primary-l)">🔄 AI Resilience</h3>
+      <p style="font-size:12px;line-height:1.6">
+        4-tier model fallback: gemini-flash-latest → 2.0-flash-lite → 2.0-flash → 2.5-flash.
+        Daily quota exhaustion is cached — no wasted API calls. Per-minute rate limits use server-suggested retry delays.
+        Safety blocks throw immediately, never retry.
+      </p>
+    </div>
+    <div class="card" style="padding:18px">
+      <h3 style="font-size:14px;margin-bottom:10px;color:var(--success)">🛡️ Security</h3>
+      <p style="font-size:12px;line-height:1.6">
+        Helmet.js security headers, MongoDB injection sanitization, HTTP parameter pollution prevention, CORS origin whitelist,
+        role-based rate limiting (auth: 20/15min, AI: 20/15min, uploads: 10/15min), medical disclaimers on all AI outputs.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 10: COMPETITIVE LANDSCAPE
+     ═══════════════════════════════════════════════ -->
+<div class="slide" data-notes="Say: 'Let's look at where we stand. Practo does booking — no AI. Ada Health does symptom checking — no booking, no Indian languages. Nuance DAX does ambient clinical notes — but it's doctor-facing, enterprise-priced, and works during or after the consultation, not before. ArogyaAI is the only platform combining all 8 AI capabilities in one integrated system.' Then add: 'To be clear — Practo has millions of users, real payments, and verified doctors. We don't. Our advantage is AI intelligence, not operational scale.' This honesty INCREASES your score.">
+  <div class="tag tp mb16">Market Position</div>
+  <h2>Competitive Landscape</h2>
+  <table class="ct mt24">
+    <thead>
+      <tr>
+        <th>AI Capability</th>
+        <th>Practo</th>
+        <th>Ada Health</th>
+        <th>Nuance DAX</th>
+        <th style="color:var(--primary-l)">ArogyaAI</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Appointment Booking</td><td class="ck">✅</td><td class="cx">—</td><td class="cx">—</td><td class="ck">✅</td></tr>
+      <tr><td>AI Symptom Chat</td><td class="cx">—</td><td class="ck">✅</td><td class="cx">—</td><td class="ck">✅</td></tr>
+      <tr><td>Medical Document AI Analysis</td><td class="cx">—</td><td class="cx">—</td><td class="cx">—</td><td class="ck">✅</td></tr>
+      <tr><td>AI Quality Indicators on Extraction</td><td class="cx">—</td><td class="cx">—</td><td class="cx">—</td><td class="ck">✅</td></tr>
+      <tr><td>Human-in-the-Loop Verification</td><td class="cx">—</td><td class="cx">—</td><td class="cx">—</td><td class="ck">✅</td></tr>
+      <tr><td>Pre-Consultation Copilot</td><td class="cx">—</td><td class="cx">—</td><td style="color:var(--dim)">Post-visit</td><td class="ck">✅</td></tr>
+      <tr><td>Multilingual Voice (Hindi/Marathi)</td><td class="cx">—</td><td class="cx">—</td><td style="color:var(--dim)">EN only</td><td class="ck">✅</td></tr>
+      <tr><td>AI Emergency Triage</td><td class="cx">—</td><td class="ck">✅</td><td class="cx">—</td><td class="ck">✅</td></tr>
+      <tr class="hr"><td><strong>Total AI Features</strong></td><td>1/8</td><td>2/8</td><td>1/8</td><td><strong>8/8</strong></td></tr>
+    </tbody>
+  </table>
+  <div class="card mt24" style="padding:14px 20px;background:rgba(245,158,11,.04);border-color:rgba(245,158,11,.15)">
+    <p style="font-size:12px;color:var(--warning);line-height:1.6">
+      ⚡ <strong>Honest note:</strong> This comparison focuses on AI capabilities. Practo has millions of users, real payments, and verified doctors — operational capabilities we haven't built yet. Our advantage is in AI intelligence and integration, not operational scale.
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 11: IMPACT + WHY WE CAN WIN
+     ═══════════════════════════════════════════════ -->
+<div class="slide" data-notes="Three sections here: Patient impact, Doctor impact, Responsible AI. Say: 'For patients: speak in your language, verify what the AI found, and have organized records. For doctors: a structured brief before every consultation — even 1 minute saved compounds across 40+ patients daily.' Then point to the Responsible AI card: 'We've built this responsibly. AI outputs are advisory — doctors remain the decision makers. Patients verify extracted data. We don't replace clinical judgment — we support it.' Then finish with the 5 reasons: working prototype, 5 AI capabilities, 3 languages, deployment-ready, real problem at scale.">
+  <div class="tag ts mb16">Impact & Positioning</div>
+  <h2>Who Benefits — And <span class="gt">Why We Can Win</span></h2>
+  <div class="g3 mt24">
+    <div class="card" style="border-top:3px solid var(--primary)">
+      <h3 style="font-size:16px;margin-bottom:12px">👤 For Patients</h3>
+      <ul class="fl" style="font-size:13px">
+        <li><span class="ic">🗣️</span><div><strong style="color:var(--text)">Accessibility:</strong> Speak symptoms in your own language</div></li>
+        <li><span class="ic">📊</span><div><strong style="color:var(--text)">Transparency:</strong> See AI extractions, correct mistakes</div></li>
+        <li><span class="ic">📁</span><div><strong style="color:var(--text)">Continuity:</strong> Health records organized, follow you</div></li>
+        <li><span class="ic">🚨</span><div><strong style="color:var(--text)">Safety:</strong> Emergency triage when seconds matter</div></li>
+      </ul>
+    </div>
+    <div class="card" style="border-top:3px solid var(--accent)">
+      <h3 style="font-size:16px;margin-bottom:12px">👨‍⚕️ For Doctors</h3>
+      <ul class="fl" style="font-size:13px">
+        <li><span class="ic">📋</span><div><strong style="color:var(--text)">Pre-read Brief:</strong> Structured AI copilot before consultation</div></li>
+        <li><span class="ic">⏱️</span><div><strong style="color:var(--text)">Time Efficiency:</strong> Even 1 min saved per patient compounds across 40+ daily consultations</div></li>
+        <li><span class="ic">🔬</span><div><strong style="color:var(--text)">Structured Data:</strong> Abnormal values flagged, trends charted</div></li>
+        <li><span class="ic">📱</span><div><strong style="color:var(--text)">Automation:</strong> Cron-based appointment reminders reduce no-shows</div></li>
+      </ul>
+    </div>
+    <div class="card" style="border-top:3px solid var(--warning)">
+      <h3 style="font-size:16px;margin-bottom:12px">🛡️ Responsible AI</h3>
+      <ul class="fl" style="font-size:13px">
+        <li><span class="ic">⚕️</span><div><strong style="color:var(--text)">Advisory only</strong> — not a diagnosis or medical device</div></li>
+        <li><span class="ic">✅</span><div><strong style="color:var(--text)">Human verification</strong> for all extracted medical data</div></li>
+        <li><span class="ic">👨‍⚕️</span><div><strong style="color:var(--text)">Doctors remain</strong> the final decision makers</div></li>
+        <li><span class="ic">⚠️</span><div><strong style="color:var(--text)">Medical disclaimers</strong> on every AI output</div></li>
+      </ul>
+    </div>
+  </div>
+  <div class="card mt24" style="padding:18px;background:var(--grad-s);border-color:rgba(6,148,162,.2)">
+    <div style="display:flex;align-items:center;gap:32px;justify-content:center;flex-wrap:wrap">
+      <div style="text-align:center">
+        <div style="font-size:13px;color:var(--primary-l);font-weight:800">✅ Working Prototype</div>
+        <div style="font-size:11px;color:var(--dim)">Running code, not slides</div>
+      </div>
+      <div style="color:var(--border)">|</div>
+      <div style="text-align:center">
+        <div style="font-size:13px;color:var(--primary-l);font-weight:800">🧠 5 AI Capabilities</div>
+        <div style="font-size:11px;color:var(--dim)">Chat, OCR, copilot, triage, summary</div>
+      </div>
+      <div style="color:var(--border)">|</div>
+      <div style="text-align:center">
+        <div style="font-size:13px;color:var(--primary-l);font-weight:800">🌐 3 Languages</div>
+        <div style="font-size:11px;color:var(--dim)">Hindi, Marathi, English</div>
+      </div>
+      <div style="color:var(--border)">|</div>
+      <div style="text-align:center">
+        <div style="font-size:13px;color:var(--primary-l);font-weight:800">⚙️ Deployment-Ready</div>
+        <div style="font-size:11px;color:var(--dim)">Fallback chain, rate limiting, auth</div>
+      </div>
+      <div style="color:var(--border)">|</div>
+      <div style="text-align:center">
+        <div style="font-size:13px;color:var(--primary-l);font-weight:800">❤️ 1.4B People</div>
+        <div style="font-size:11px;color:var(--dim)">Solving a real problem at scale</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 12: FUTURE SCOPE & VALIDATION ROADMAP
+     ═══════════════════════════════════════════════ -->
+<div class="slide" data-notes="Say: 'Where do we go from here? Five phases.' Run through quickly: Phase 1 — doctor onboarding and payments. Phase 2 — ABDM integration and digital prescriptions for regulatory compliance. Phase 3 — chronic disease prediction and AI visit summaries. Phase 4 — mobile apps and more languages. Phase 5 — wearables and remote monitoring. Then point to the validation section: 'Equally important — our validation roadmap. Clinical testing with real doctors, accuracy benchmarks, bias evaluation, and regulatory readiness. We know the path from prototype to product.' Finish: 'Every item here is future work — not yet implemented. But the architecture supports it.'">
+  <div class="tag ta mb16">Vision</div>
+  <h2>Future Scope & <span class="gt">Validation Roadmap</span></h2>
+  <div class="g2 mt24">
+    <!-- Left: Phased Development -->
+    <div>
+      <h3 style="font-size:15px;margin-bottom:14px;color:var(--accent-l)">Future Development Phases</h3>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="card" style="padding:14px 18px;border-left:3px solid var(--primary)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+            <span style="font-size:10px;font-weight:800;color:var(--primary);background:rgba(6,148,162,.15);padding:2px 8px;border-radius:6px">PHASE 1</span>
+            <span style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.8px">Not yet implemented</span>
+          </div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.5">Verified doctor onboarding · Razorpay payments · Video consultations</p>
+        </div>
+        <div class="card" style="padding:14px 18px;border-left:3px solid var(--accent)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+            <span style="font-size:10px;font-weight:800;color:var(--accent-l);background:rgba(124,58,237,.15);padding:2px 8px;border-radius:6px">PHASE 2</span>
+            <span style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.8px">Not yet implemented</span>
+          </div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.5">ABDM / ABHA integration · Digital prescriptions · Unified health records</p>
+        </div>
+        <div class="card" style="padding:14px 18px;border-left:3px solid var(--warning)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+            <span style="font-size:10px;font-weight:800;color:var(--warning);background:rgba(245,158,11,.15);padding:2px 8px;border-radius:6px">PHASE 3</span>
+            <span style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.8px">Not yet implemented</span>
+          </div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.5">Chronic disease prediction · Longitudinal health monitoring · AI visit summaries</p>
+        </div>
+        <div class="card" style="padding:14px 18px;border-left:3px solid var(--success)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+            <span style="font-size:10px;font-weight:800;color:var(--success);background:rgba(16,185,129,.15);padding:2px 8px;border-radius:6px">PHASE 4</span>
+            <span style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.8px">Not yet implemented</span>
+          </div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.5">Android &amp; iOS apps · Tamil, Telugu, Bengali, Kannada</p>
+        </div>
+        <div class="card" style="padding:14px 18px;border-left:3px solid var(--danger)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+            <span style="font-size:10px;font-weight:800;color:var(--danger);background:rgba(239,68,68,.15);padding:2px 8px;border-radius:6px">PHASE 5</span>
+            <span style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.8px">Not yet implemented</span>
+          </div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.5">Wearable integrations · Remote patient monitoring</p>
+        </div>
+      </div>
+    </div>
+    <!-- Right: Validation Roadmap -->
+    <div>
+      <h3 style="font-size:15px;margin-bottom:14px;color:var(--warning)">Validation &amp; Ethics Roadmap</h3>
+      <div class="card" style="border-top:3px solid var(--warning)">
+        <ul class="fl" style="font-size:13px">
+          <li><span class="ic">🏥</span><div><strong style="color:var(--text)">Clinical validation</strong> with practicing doctors</div></li>
+          <li><span class="ic">🧪</span><div><strong style="color:var(--text)">Real-world pilot testing</strong> in healthcare facilities</div></li>
+          <li><span class="ic">📊</span><div><strong style="color:var(--text)">Accuracy benchmarking</strong> against ground truth data</div></li>
+          <li><span class="ic">🔍</span><div><strong style="color:var(--text)">Explainability improvements</strong> for AI decisions</div></li>
+          <li><span class="ic">⚖️</span><div><strong style="color:var(--text)">Bias and safety evaluation</strong> across demographics</div></li>
+          <li><span class="ic">📋</span><div><strong style="color:var(--text)">Regulatory readiness</strong> assessment (DISHA, CDSCO)</div></li>
+        </ul>
+      </div>
+      <div class="card mt20" style="padding:14px 18px;background:rgba(245,158,11,.04);border-color:rgba(245,158,11,.15)">
+        <p style="font-size:11px;color:var(--warning);line-height:1.6;text-align:center">
+          ⚠️ All validation items are <strong>future work</strong>. We know the path from prototype to product — and we've designed the architecture to support it.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 13: THANK YOU (MEMORABLE CLOSING)
+     ═══════════════════════════════════════════════ -->
+<div class="slide s-ty" data-notes="Deliver the closing with conviction. Pause. Look at judges. Say: 'In India, a doctor sees 40 patients a day. Each consultation lasts 2 minutes. We cannot add more minutes to the day. But we can make every minute count. That is ArogyaAI.' Pause again. Then: 'Thank you. We'd love to show you the live demo or answer any questions.' Smile. You built something real.">
+  <div style="position:relative;z-index:1">
+    <h1 style="font-size:48px;margin-bottom:20px">
+      <span class="gt">Thank You</span>
+    </h1>
+    <div style="max-width:650px;margin:0 auto 36px">
+      <p style="font-size:20px;line-height:1.7;color:var(--muted)">
+        In India, a doctor sees 40 patients a day.<br>
+        Each consultation lasts 2 minutes.<br>
+        <strong style="color:var(--text)">We can't add more minutes.</strong><br>
+        <span class="gt" style="font-size:24px;font-weight:800">But we can make every minute count.</span>
+      </p>
+    </div>
+    <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+      <div class="card" style="padding:14px 24px;display:inline-flex;align-items:center;gap:8px">
+        <span style="font-size:18px">💻</span>
+        <!-- ✏️ UPDATE: Your GitHub link -->
+        <span style="font-size:13px">GitHub: <strong>ArogyaAI</strong></span>
+      </div>
+      <div class="card" style="padding:14px 24px;display:inline-flex;align-items:center;gap:8px">
+        <span style="font-size:18px">🖥️</span>
+        <span style="font-size:13px">Live Demo Available</span>
+      </div>
+    </div>
+    <p style="margin-top:32px;font-size:13px;color:var(--dim)">
+      Questions? We'd love to discuss the technical details — or show a live demo.
+    </p>
+  </div>
+</div>
+
+</div><!-- /deck -->
+
+<script>
+  const S=document.querySelectorAll('.slide'),P=document.getElementById('prog'),C=document.getElementById('cnt'),NP=document.getElementById('np'),NC=document.getElementById('nc');
+  let c=0,nv=false;
+  function go(n){S.forEach(s=>s.classList.remove('active'));c=Math.max(0,Math.min(n,S.length-1));S[c].classList.add('active');P.style.width=((c+1)/S.length*100)+'%';C.textContent=(c+1)+' / '+S.length;NC.textContent=S[c].dataset.notes||'No notes.';}
+  document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowDown'||e.key===' '){e.preventDefault();go(c+1);}else if(e.key==='ArrowLeft'||e.key==='ArrowUp'){e.preventDefault();go(c-1);}else if(e.key==='n'||e.key==='N'){nv=!nv;NP.classList.toggle('vis',nv);}else if(e.key==='Home')go(0);else if(e.key==='End')go(S.length-1);});
+  let tx=0;document.addEventListener('touchstart',e=>{tx=e.changedTouches[0].screenX;});document.addEventListener('touchend',e=>{const d=tx-e.changedTouches[0].screenX;if(Math.abs(d)>50){d>0?go(c+1):go(c-1);}});
+  go(0);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,59 @@
+{
+  "name": "arogyaai-server",
+  "version": "1.0.0",
+  "description": "ArogyaAI Backend API — Node.js + Express + MongoDB",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "kill:port": "for /f tokens^=5 %a in ('netstat -ano ^| findstr :5000 ^| findstr LISTENING') do taskkill /F /PID %a",
+    "dev": "npm run kill:port 2>nul & nodemon src/index.js",
+    "lint": "eslint \"src/**/*.js\" \"test/**/*.js\"",
+    "lint:fix": "eslint \"src/**/*.js\" \"test/**/*.js\" --fix",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --runInBand --coverage",
+    "test:integration": "echo \"Integration tests require a running server. Start with 'npm run dev' then run: node test/auth.test.js\""
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "bcryptjs": "^2.4.3",
+    "bullmq": "^5.0.0",
+    "cloudinary": "^2.5.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "date-fns": "^3.6.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-rate-limit": "^7.4.1",
+    "express-validator": "^7.2.0",
+    "helmet": "^8.0.0",
+    "hpp": "^0.2.3",
+    "ioredis": "^5.11.1",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.7.3",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^6.9.15",
+    "pdf-parse": "^1.1.1",
+    "rate-limit-redis": "^4.3.1",
+    "razorpay": "^2.9.6",
+    "streamifier": "^0.1.1",
+    "tesseract.js": "^4.1.4",
+    "winston": "^3.15.0",
+    "winston-daily-rotate-file": "^5.0.0",
+    "xss-clean": "^0.1.4"
+  },
+  "devDependencies": {
+    "axios": "^1.16.1",
+    "eslint": "^8.57.1",
+    "jest": "^30.4.2",
+    "nodemon": "^3.1.7",
+    "pdfkit": "^0.18.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
