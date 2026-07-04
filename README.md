@@ -661,28 +661,6 @@ Before going live, verify:
 
 ---
 
-<div align="center">
-
-## 🤝 Contributing
-
-</div>
-
-We welcome contributions! Here's how to get started:
-
-```bash
-# Fork the repo, then:
-git checkout -b feat/your-amazing-feature
-git commit -m "feat: add your amazing feature"
-git push origin feat/your-amazing-feature
-# Open a Pull Request 🎉
-```
-
-Please ensure `npm run lint` passes and existing `npm test` tests are green before submitting.
-
----
-
-<div align="center">
-
 ## 📄 License
 
 This project is licensed under the **MIT License**.
