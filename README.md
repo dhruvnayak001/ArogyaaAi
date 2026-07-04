@@ -1,569 +1,563 @@
-# 🏥 ArogyaAI — AI-Powered Healthcare Platform
+<div align="center">
 
-> A full-stack, production-grade healthcare web application combining **Google Gemini AI**, **real-time notifications**, **medical record OCR**, **appointment booking with payments**, and a dual-portal (Patient + Doctor) experience.
+# 🏥 ArogyaAI
+
+### *Your Intelligent AI Health Companion*
+
+[![Node.js](https://img.shields.io/badge/Node.js-≥18.0-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://mongodb.com)
+[![Gemini AI](https://img.shields.io/badge/Gemini-AI%20Powered-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev)
+[![Razorpay](https://img.shields.io/badge/Razorpay-Payments-02042B?style=for-the-badge&logo=razorpay&logoColor=white)](https://razorpay.com)
+[![License](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)](./LICENSE)
+
+<br/>
+
+> **ArogyaAI** is a full-stack, production-grade healthcare platform that fuses **Google Gemini AI** with modern medical workflows — giving patients 24/7 intelligent health guidance, emergency triage, voice support, and seamless doctor appointments; while empowering physicians with AI-generated patient summaries and a 360° patient view.
+
+<br/>
+
+[**🚀 Live Demo**](#) &nbsp;·&nbsp; [**📖 API Docs**](#-api-reference) &nbsp;·&nbsp; [**🐛 Report Bug**](../../issues) &nbsp;·&nbsp; [**✨ Request Feature**](../../issues)
+
+</div>
 
 ---
 
 ## 📋 Table of Contents
 
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Environment Variables](#environment-variables)
-  - [Running the App](#running-the-app)
-- [API Reference](#api-reference)
-- [Data Models](#data-models)
-- [AI & ML Features](#ai--ml-features)
-- [Security](#security)
-- [Cron Jobs](#cron-jobs)
+- [✨ Features](#-features)
+- [🏗️ Architecture](#️-architecture)
+- [🛠️ Tech Stack](#️-tech-stack)
+- [⚡ Quick Start](#-quick-start)
+- [🔑 Environment Variables](#-environment-variables)
+- [📁 Project Structure](#-project-structure)
+- [🔌 API Reference](#-api-reference)
+- [🔒 Security](#-security)
+- [🧪 Testing](#-testing)
+- [🚀 Deployment](#-deployment)
+- [🤝 Contributing](#-contributing)
 
 ---
 
-## Overview
+## ✨ Features
 
-**ArogyaAI** is a comprehensive digital health platform built to modernize patient–doctor interactions. It leverages Google's Gemini LLM for conversational health assistance, intelligent medical record extraction (PDF/image via OCR), and real-time appointment management backed by Razorpay payments.
-
-The platform supports two distinct roles:
-- **Patients** — chat with AI, upload health records, book appointments, manage profile & emergency contacts
-- **Doctors** — manage appointments, view patient 360° profiles, access AI-generated clinical summaries
-
----
-
-## Key Features
+<table>
+<tr>
+<td width="50%">
 
 ### 🤖 AI & Intelligence
-| Feature | Description |
-|---|---|
-| **AI Health Chat** | Conversational health assistant powered by Google Gemini with multi-turn session memory |
-| **Medical Record Extraction** | OCR (Tesseract.js) + Gemini AI extracts structured data from uploaded PDFs/images with confidence scoring |
-| **AI Confirmation Flow** | Users review and correct AI-extracted data before saving (idle → uploading → extracting → confirming → saving) |
-| **Emergency Triage** | AI analyzes reported symptoms + vitals and provides urgency classification |
-| **Doctor Summaries** | Gemini generates clinical summaries of patient health records for doctor review |
-| **Patient 360° View** | Doctors see an AI-synthesized full history, timeline, and summary of each patient |
-| **Model Fallback Chain** | Automatically falls back across Gemini model variants on quota/rate-limit errors |
-| **Voice Input** | Voice-to-text for chat input via the voice service |
+- **Gemini-Powered Chatbot** — Context-aware healthcare conversations with multi-model fallback chain (Flash → Pro → Flash-8B)
+- **AI Medical Summaries** — Automatic structured analysis of lab reports and prescriptions
+- **Voice Assistant** — Hands-free symptom description via native speech recognition
+- **OCR + PDF Parsing** — Extract text from scanned reports with Tesseract.js + Gemini Vision fallback
+- **Emergency Triage** — Real-time critical symptom detection with instant alerts
 
-### 📅 Appointments
-- Browse and search doctors by specialty, location, availability
-- Slot-based appointment booking system
-- Razorpay payment integration (order creation + HMAC-SHA256 signature verification)
-- PDF invoice/receipt generation (PDFKit)
-- Appointment status lifecycle: `pending → confirmed → completed / cancelled`
-- Replay-attack prevention via idempotency checks
+</td>
+<td width="50%">
 
-### 📂 Health Records
-- Upload lab reports, prescriptions, imaging (PDF or image)
-- OCR text extraction → AI-structured data with confidence scores
-- Manual confirmation & correction before saving
-- Filter by type, search by title
-- Cloudinary storage for file assets
+### 📅 Appointments & Payments
+- **Smart Appointment Booking** — AI-suggested specialists with slot management
+- **Razorpay Integration** — Secure payment orders with HMAC-SHA256 webhook verification
+- **Automated Refunds** — BullMQ-powered refund queue with retry/backoff
+- **PDF Invoices** — Auto-generated payment receipts via PDFKit
+- **Appointment Reminders** — Cron-scheduled email reminders for upcoming visits
 
-### 🔔 Notifications
-- In-app notification center
-- Email reminders via Nodemailer (SMTP Gmail)
-- Automated 24-hour and 1-hour appointment reminders (cron jobs)
+</td>
+</tr>
+<tr>
+<td width="50%">
 
-### 👤 Dual-Portal Design
-- **Patient Dashboard** — health summary, quick actions, recent records, upcoming appointments
-- **Doctor Portal** — appointment queue, patient list, 360° patient view, AI clinical summaries
-- Role-based routing and access guards
+### 👨‍⚕️ Doctor Portal
+- **Doctor Dashboard** — Earnings, stats, and upcoming appointment overview
+- **Patient View 360°** — Full medical history, records, and chat sessions per patient
+- **AI-Generated Summaries** — Pre-consultation briefings generated by Gemini AI
+- **Appointment Management** — Accept, reschedule, complete, or cancel with audit trail
 
-### 🔐 Auth & Security
-- JWT access/refresh token pair (15m access, 7d refresh) stored in signed cookies
-- Email OTP verification on registration
-- Forgot/Reset password via time-limited email tokens
-- Bcrypt password hashing, HTTP-only cookies
+</td>
+<td width="50%">
 
----
+### 🛡️ Security & Infrastructure
+- **JWT Auth** — Rotating access (15 min) + refresh (7 day) token strategy
+- **OTP Email Verification** — TTL-indexed OTP with rate-limiting
+- **Tiered Rate Limiting** — Separate limiters for auth, AI, uploads, payments (Redis-backed for distributed scale)
+- **Cloudinary Storage** — Encrypted file storage for health records
+- **BullMQ Workers** — Async email, notification, AI, and refund processing queues
 
-## Tech Stack
+</td>
+</tr>
+<tr>
+<td width="50%">
 
-### Frontend (`/client`)
-| Layer | Technology |
-|---|---|
-| Framework | React 18 + Vite |
-| Routing | React Router DOM v6 |
-| State Management | Zustand |
-| Styling | Tailwind CSS v3 |
-| Animations | Framer Motion |
-| Forms | React Hook Form |
-| HTTP Client | Axios |
-| Notifications | React Hot Toast |
-| Icons | Lucide React + React Icons |
-| Markdown | react-markdown + remark-gfm |
-| Date Utilities | date-fns |
+### 🧑‍💻 Patient Dashboard
+- **Health Records Vault** — Upload, manage, and get AI analysis of medical documents
+- **Notifications Center** — Real-time in-app and email notifications
+- **Profile Management** — Complete medical profile with allergies, conditions, history
+- **Settings** — Preferences, password changes, account management
 
-### Backend (`/server`)
-| Layer | Technology |
-|---|---|
-| Runtime | Node.js >= 18 |
-| Framework | Express 4 |
-| Database | MongoDB (Atlas) via Mongoose 8 |
-| AI | Google Generative AI SDK (Gemini Flash) |
-| OCR | Tesseract.js |
-| PDF Parsing | pdf-parse |
-| File Storage | Cloudinary |
-| Payments | Razorpay |
-| Email | Nodemailer (SMTP) |
-| Scheduled Jobs | node-cron |
-| Logging | Winston + Morgan |
-| Security | Helmet, CORS, express-rate-limit, HPP, express-mongo-sanitize |
-| Validation | express-validator |
-| PDF Generation | PDFKit |
-| Authentication | jsonwebtoken + bcryptjs |
+</td>
+<td width="50%">
+
+### 🏗️ Production-Ready
+- **Environment Validation** — Server refuses to start with placeholder/missing secrets
+- **Graceful Shutdown** — Workers drain before process exits (SIGTERM/SIGINT)
+- **Kubernetes-Ready** — `/health` + `/readiness` probe endpoints
+- **Winston Logging** — Daily rotating log files with structured output
+- **NoSQL Injection Prevention** — `express-mongo-sanitize` + `hpp` guards
+
+</td>
+</tr>
+</table>
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```
-                    CLIENT (Vite + React)
-        Patient Portal | Doctor Portal | Auth Pages
-                           |
-              Zustand Stores (auth, chat, appointments...)
-                           |
-                     Axios REST API
-                           |
-                SERVER (Express / Node.js)
-          Security: Helmet · CORS · Rate Limiters · HPP
-                           |
-              Routes /api/v1/* (10 route modules)
-                           |
-               Services Layer (14 services)
-              /                           \
-      MongoDB (Atlas)            External: Gemini AI
-      Mongoose Models            Cloudinary · Razorpay
-                                 Nodemailer (SMTP)
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           ArogyaAI Platform                             │
+│                                                                         │
+│   ┌─────────────────────────┐       ┌──────────────────────────────┐   │
+│   │      React Frontend      │  ←→  │     Express.js Backend        │   │
+│   │  (Vite + TailwindCSS)   │  JWT  │   (Node.js ≥ 18 + MongoDB)   │   │
+│   │                         │       │                              │   │
+│   │  ● Landing Page         │       │  ● Auth API (JWT + OTP)      │   │
+│   │  ● Patient Dashboard    │       │  ● Chat API                  │   │
+│   │  ● Doctor Portal        │       │  ● Appointments API          │   │
+│   │  ● Chat Interface       │       │  ● Health Records API        │   │
+│   │  ● Health Records       │       │  ● Payments API (Razorpay)   │   │
+│   │  ● Emergency Page       │       │  ● AI Analysis API           │   │
+│   └─────────────────────────┘       │  ● Emergency API             │   │
+│                                     └──────────┬─────────────────-─┘   │
+│                                                │                        │
+│              ┌──────────────────┬──────────────┼──────────────────┐    │
+│              ↓                  ↓              ↓                  ↓    │
+│        ┌──────────┐    ┌──────────────┐  ┌─────────┐    ┌──────────┐  │
+│        │ MongoDB  │    │  Gemini AI   │  │ Razo-   │    │Cloudinary│  │
+│        │  Atlas   │    │ (Flash/Pro)  │  │ rpay    │    │ Storage  │  │
+│        └──────────┘    └──────────────┘  └─────────┘    └──────────┘  │
+│                                                                         │
+│         ┌──────────────────────────────────────────────────────────┐   │
+│         │           BullMQ Workers (Redis-backed)                  │   │
+│         │   📧 Email Worker  🔔 Notification  🤖 AI  💰 Refund     │   │
+│         └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Project Structure
+## 🛠️ Tech Stack
 
-```
-ArogyaAI/
-├── client/                          # React frontend (Vite)
-│   ├── src/
-│   │   ├── api/                     # Axios instance & API helpers
-│   │   ├── components/
-│   │   │   ├── appointments/        # Booking UI components
-│   │   │   ├── chat/                # Chat bubble, voice input
-│   │   │   ├── doctor/              # Doctor-facing components
-│   │   │   ├── guards/              # ProtectedRoute, DoctorRoute, PublicRoute
-│   │   │   ├── navigation/          # Sidebar, navbar
-│   │   │   ├── notifications/       # ReminderBanner, notification list
-│   │   │   ├── records/             # Upload, extraction, confirmation modal
-│   │   │   └── ui/                  # Shared UI (PageLoader, modals, badges)
-│   │   ├── hooks/                   # Custom React hooks
-│   │   ├── layouts/                 # RootLayout, AuthLayout, DashboardLayout, DoctorLayout
-│   │   ├── pages/
-│   │   │   ├── auth/                # Login, Register, ForgotPassword, ResetPassword, VerifyEmail
-│   │   │   ├── appointments/        # AppointmentsPage, BookAppointmentPage
-│   │   │   ├── chat/                # ChatPage (AI assistant)
-│   │   │   ├── dashboard/           # DashboardPage (patient home)
-│   │   │   ├── doctor/              # Dashboard, Appointments, Patients, PatientView360, Summaries
-│   │   │   ├── emergency/           # EmergencyPage (AI triage)
-│   │   │   ├── notifications/       # NotificationsPage
-│   │   │   ├── profile/             # ProfilePage
-│   │   │   ├── records/             # HealthRecordsPage
-│   │   │   └── settings/            # SettingsPage
-│   │   ├── services/                # Frontend service wrappers
-│   │   ├── store/                   # Zustand stores
-│   │   │   ├── authStore.js         # Auth state, login/logout/refresh
-│   │   │   ├── chatStore.js         # Chat sessions & message state
-│   │   │   ├── appointmentStore.js  # Appointment data
-│   │   │   ├── extractionStore.js   # AI extraction confirmation flow
-│   │   │   └── notificationStore.js # Notification state
-│   │   ├── styles/                  # Global CSS / design tokens
-│   │   └── utils/                   # Helpers (normalizeMedicalExtraction, etc.)
-│   ├── tailwind.config.js
-│   └── vite.config.js
-│
-└── server/                          # Express backend
-    └── src/
-        ├── config/
-        │   ├── db.js                # MongoDB connection
-        │   ├── gemini.js            # Gemini model config & fallback chain
-        │   └── logger.js            # Winston logger
-        ├── controllers/             # HTTP layer (delegates to services)
-        │   ├── auth.controller.js
-        │   ├── appointment.controller.js
-        │   ├── chat.controller.js
-        │   ├── doctor.controller.js
-        │   ├── notification.controller.js
-        │   ├── otp.controller.js
-        │   ├── payment.controller.js
-        │   └── record.controller.js
-        ├── middleware/
-        │   ├── auth.middleware.js   # JWT protect guard
-        │   ├── errorHandler.js      # Global error handler
-        │   ├── notFound.js          # 404 fallback
-        │   └── validate.middleware.js
-        ├── models/
-        │   ├── User.model.js        # Patient + Doctor shared schema
-        │   ├── Appointment.model.js # Booking, payment, reminder flags
-        │   ├── ChatSession.model.js # AI chat history
-        │   ├── HealthRecord.model.js
-        │   ├── Notification.model.js # TTL: 30 days
-        │   └── Otp.model.js         # TTL: 10 minutes
-        ├── routes/                  # 10 route modules
-        ├── services/                # 14 business logic services
-        │   ├── gemini.service.js    # Gemini AI, model fallback chain
-        │   ├── record.service.js    # Records CRUD + AI extract/confirm
-        │   ├── appointment.service.js
-        │   ├── doctor.service.js    # Search, availability, patient 360
-        │   ├── payment.service.js   # Razorpay + PDF invoice
-        │   ├── chat.service.js
-        │   ├── auth.service.js
-        │   ├── otp.service.js
-        │   ├── notification.service.js
-        │   ├── cron.service.js      # Reminder cron jobs
-        │   ├── ocr.service.js       # Tesseract.js wrapper
-        │   ├── pdfParser.service.js
-        │   ├── voice.service.js
-        │   └── medicalAnalysis.service.js
-        └── index.js                 # Express entry point
-```
+<table>
+<tr><th>Layer</th><th>Technology</th><th>Purpose</th></tr>
+<tr><td><b>Frontend</b></td><td>React 18 + Vite</td><td>UI framework with HMR dev server</td></tr>
+<tr><td></td><td>TailwindCSS 3</td><td>Utility-first styling</td></tr>
+<tr><td></td><td>Framer Motion</td><td>Smooth page &amp; component animations</td></tr>
+<tr><td></td><td>Zustand</td><td>Lightweight global state management</td></tr>
+<tr><td></td><td>React Router v6</td><td>Client-side routing with lazy loading</td></tr>
+<tr><td></td><td>React Hook Form</td><td>Performant form handling + validation</td></tr>
+<tr><td></td><td>Axios</td><td>HTTP client with JWT interceptors</td></tr>
+<tr><td><b>Backend</b></td><td>Node.js ≥ 18 + Express 4</td><td>REST API server</td></tr>
+<tr><td></td><td>MongoDB + Mongoose 8</td><td>Primary database with TTL indexes</td></tr>
+<tr><td></td><td>BullMQ + Redis</td><td>Background job queues</td></tr>
+<tr><td></td><td>Nodemailer</td><td>Transactional email (SMTP)</td></tr>
+<tr><td></td><td>node-cron</td><td>Scheduled tasks (reminders, cleanup)</td></tr>
+<tr><td></td><td>Winston</td><td>Structured logging with daily rotation</td></tr>
+<tr><td><b>AI / ML</b></td><td>Google Gemini API</td><td>Chat, analysis, summaries, OCR fallback</td></tr>
+<tr><td></td><td>Tesseract.js</td><td>Local OCR for scanned documents</td></tr>
+<tr><td></td><td>pdf-parse</td><td>PDF text extraction</td></tr>
+<tr><td><b>Payments</b></td><td>Razorpay</td><td>Order creation, verification, refunds</td></tr>
+<tr><td></td><td>PDFKit</td><td>Payment invoice generation</td></tr>
+<tr><td><b>Storage</b></td><td>Cloudinary</td><td>Health record file storage</td></tr>
+<tr><td><b>Security</b></td><td>Helmet + CORS + HPP</td><td>HTTP security headers</td></tr>
+<tr><td></td><td>express-rate-limit</td><td>Tiered API rate limiting</td></tr>
+<tr><td></td><td>bcryptjs + JWT</td><td>Password hashing + token auth</td></tr>
+</table>
 
 ---
 
-## Getting Started
+## ⚡ Quick Start
 
 ### Prerequisites
 
-- **Node.js** >= 18.x
-- **npm** >= 9.x
-- A **MongoDB Atlas** cluster (free tier works)
-- A **Google AI Studio** API key (for Gemini)
-- A **Cloudinary** account (free tier works)
-- A **Razorpay** account (test mode is fine)
-- A Gmail account with an **App Password** enabled
+| Tool | Version |
+|------|---------|
+| Node.js | `≥ 18.0.0` |
+| npm | `≥ 9.0.0` |
+| MongoDB | Atlas or local `≥ 6.0` |
+| Redis | Optional (for distributed rate-limiting & job queues) |
 
----
+### 1. Clone the Repository
 
-### Installation
-
-**1. Clone the repository**
 ```bash
 git clone https://github.com/your-username/ArogyaAI.git
 cd ArogyaAI
 ```
 
-**2. Install server dependencies**
+### 2. Install Dependencies
+
 ```bash
-cd server
-npm install
+# Install server dependencies
+cd server && npm install
+
+# Install client dependencies
+cd ../client && npm install
 ```
 
-**3. Install client dependencies**
+### 3. Configure Environment Variables
+
 ```bash
-cd ../client
-npm install
+# Server
+cp server/.env.example server/.env
+# → Fill in all values (see Environment Variables section below)
+
+# Client
+cp client/.env.example client/.env
+```
+
+### 4. Start Development Servers
+
+**Terminal 1 — Backend:**
+
+```bash
+cd server
+npm run dev
+# ✅ Server running on http://localhost:5000
+```
+
+**Terminal 2 — Frontend:**
+
+```bash
+cd client
+npm run dev
+# ✅ Client running on http://localhost:3000
+```
+
+### 5. Verify Health
+
+```bash
+curl http://localhost:5000/health
+# → {"success":true,"service":"ArogyaAI API","status":"healthy"}
+
+curl http://localhost:5000/readiness
+# → {"success":true,"status":"ready","checks":{"mongodb":{"status":"ok"},"gemini":{"status":"ok"}}}
 ```
 
 ---
 
-### Environment Variables
+## 🔑 Environment Variables
 
-Copy `server/.env.example` to `server/.env` and fill in your values:
+Create `server/.env` from `server/.env.example`:
 
 ```env
-# Server
+# ── Server ──────────────────────────────────────────
 PORT=5000
 NODE_ENV=development
 
-# MongoDB Atlas
+# ── Database ─────────────────────────────────────────
 MONGODB_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/arogyaai
 
-# JWT (use long random strings)
-JWT_ACCESS_SECRET=<min 64 chars>
-JWT_REFRESH_SECRET=<min 64 chars>
+# ── JWT (min 32 chars each) ──────────────────────────
+JWT_ACCESS_SECRET=<your_64_char_secret>
+JWT_REFRESH_SECRET=<your_64_char_secret>
 JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 
-# Google Gemini
-GEMINI_API_KEY=<your key>
+# ── Google Gemini AI ─────────────────────────────────
+GEMINI_API_KEY=<your_gemini_api_key>
 GEMINI_MODEL=gemini-1.5-flash
 
-# Gmail SMTP
+# ── Email (SMTP) ─────────────────────────────────────
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
-EMAIL_USER=you@gmail.com
-EMAIL_PASS=<Gmail App Password>
-EMAIL_FROM=ArogyaAI <noreply@arogyaai.health>
+EMAIL_USER=your@gmail.com
+EMAIL_PASS=<app_password>
 
-# Cloudinary
-CLOUDINARY_CLOUD_NAME=<name>
-CLOUDINARY_API_KEY=<key>
-CLOUDINARY_API_SECRET=<secret>
+# ── Cloudinary ───────────────────────────────────────
+CLOUDINARY_CLOUD_NAME=<cloud_name>
+CLOUDINARY_API_KEY=<api_key>
+CLOUDINARY_API_SECRET=<api_secret>
 
-# CORS
+# ── Razorpay ─────────────────────────────────────────
+RAZORPAY_KEY_ID=<key_id>
+RAZORPAY_KEY_SECRET=<key_secret>
+
+# ── Misc ─────────────────────────────────────────────
 CLIENT_URL=http://localhost:3000
-
-# Cookie
-COOKIE_SECRET=<min 32 chars>
-
-# Razorpay
-RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxx
-RAZORPAY_KEY_SECRET=<secret>
+COOKIE_SECRET=<your_32_char_secret>
+REDIS_URL=redis://localhost:6379   # optional — enables distributed features
 ```
 
-For the client, create `client/.env`:
-```env
-VITE_API_URL=http://localhost:5000/api/v1
+> **⚠️ Warning:** The server performs **startup validation** and will **refuse to start** if any required variable is missing, blank, or still a placeholder value. This is by design — a misconfigured server is safer than a silently broken one.
+
+---
+
+## 📁 Project Structure
+
+```
+ArogyaAI/
+├── 📂 client/                    # React + Vite frontend
+│   ├── src/
+│   │   ├── 📂 api/               # Axios API clients
+│   │   ├── 📂 components/        # Reusable UI components
+│   │   │   ├── appointments/
+│   │   │   ├── chat/
+│   │   │   ├── doctor/
+│   │   │   ├── guards/           # PublicRoute, ProtectedRoute, DoctorRoute
+│   │   │   ├── navigation/
+│   │   │   ├── notifications/
+│   │   │   ├── records/
+│   │   │   └── ui/
+│   │   ├── 📂 hooks/             # Custom React hooks
+│   │   ├── 📂 layouts/           # Root, Auth, Dashboard, Doctor layouts
+│   │   ├── 📂 pages/             # Route-level page components
+│   │   │   ├── auth/             # Login, Register, ForgotPassword, ResetPassword
+│   │   │   ├── appointments/     # AppointmentsPage, BookAppointmentPage
+│   │   │   ├── chat/             # ChatPage (AI chatbot interface)
+│   │   │   ├── dashboard/        # Patient dashboard
+│   │   │   ├── doctor/           # Doctor portal (Dashboard, Patients, Summaries)
+│   │   │   ├── emergency/        # Emergency triage page
+│   │   │   ├── records/          # Health records vault
+│   │   │   └── profile/ settings/ notifications/
+│   │   ├── 📂 services/          # Business logic helpers
+│   │   ├── 📂 store/             # Zustand state stores
+│   │   └── 📂 utils/             # Utility functions
+│   └── tailwind.config.js
+│
+└── 📂 server/                    # Node.js + Express backend
+    └── src/
+        ├── 📂 config/            # DB, logger, Gemini, Redis config
+        ├── 📂 controllers/       # Route handler functions
+        │   ├── auth.controller.js
+        │   ├── chat.controller.js
+        │   ├── appointment.controller.js
+        │   ├── record.controller.js
+        │   ├── payment.controller.js
+        │   ├── doctor.controller.js
+        │   ├── notification.controller.js
+        │   ├── otp.controller.js
+        │   └── webhook.controller.js
+        ├── 📂 middleware/        # Auth, error handling, upload, validation
+        ├── 📂 models/            # Mongoose schemas
+        │   ├── User.model.js
+        │   ├── Appointment.model.js
+        │   ├── ChatSession.model.js
+        │   ├── HealthRecord.model.js
+        │   ├── Notification.model.js
+        │   ├── Otp.model.js
+        │   └── WebhookEvent.model.js
+        ├── 📂 queues/            # BullMQ queue definitions + workers
+        │   └── workers/          # email, notification, ai, refund workers
+        ├── 📂 routes/            # Express routers (10 route modules)
+        ├── 📂 services/          # Core business logic (14 services)
+        │   ├── gemini.service.js          # Gemini AI integration
+        │   ├── medicalAnalysis.service.js # Report analysis pipeline
+        │   ├── appointment.service.js
+        │   ├── payment.service.js         # Razorpay + invoice generation
+        │   ├── auth.service.js
+        │   ├── chat.service.js
+        │   ├── doctor.service.js
+        │   ├── cron.service.js            # Scheduled tasks
+        │   ├── ocr.service.js             # Tesseract.js OCR
+        │   ├── pdfParser.service.js
+        │   ├── voice.service.js
+        │   ├── record.service.js
+        │   ├── otp.service.js
+        │   └── notification.service.js
+        ├── 📂 utils/             # AppError, sendEmail, helpers
+        └── index.js              # Express app entry point
 ```
 
 ---
 
-### Running the App
+## 🔌 API Reference
 
-**Start the backend:**
+Base URL: `http://localhost:5000/api/v1`
+
+<details>
+<summary><b>🔐 Authentication</b> — <code>/api/v1/auth</code></summary>
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `POST` | `/auth/register` | Register a new patient or doctor | ❌ |
+| `POST` | `/auth/login` | Login and receive JWT tokens | ❌ |
+| `POST` | `/auth/logout` | Invalidate refresh token | ✅ |
+| `POST` | `/auth/refresh` | Rotate access token | ✅ |
+| `POST` | `/auth/forgot-password` | Send OTP reset email | ❌ |
+| `POST` | `/auth/reset-password` | Reset password with OTP | ❌ |
+| `POST` | `/auth/verify-email` | Verify email with OTP | ✅ |
+| `POST` | `/auth/resend-otp` | Resend verification OTP | ✅ |
+
+</details>
+
+<details>
+<summary><b>💬 AI Chat</b> — <code>/api/v1/chat</code></summary>
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `POST` | `/chat` | Send a message to the AI chatbot | ✅ |
+| `GET` | `/chat/sessions` | List all chat sessions | ✅ |
+| `GET` | `/chat/sessions/:id` | Get a specific session with history | ✅ |
+| `DELETE` | `/chat/sessions/:id` | Delete a chat session | ✅ |
+
+</details>
+
+<details>
+<summary><b>📅 Appointments</b> — <code>/api/v1/appointments</code></summary>
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `POST` | `/appointments` | Book a new appointment | ✅ |
+| `GET` | `/appointments` | List patient appointments | ✅ |
+| `GET` | `/appointments/:id` | Get appointment details | ✅ |
+| `PATCH` | `/appointments/:id/cancel` | Cancel an appointment | ✅ |
+| `PATCH` | `/appointments/:id/reschedule` | Reschedule an appointment | ✅ |
+| `PATCH` | `/appointments/:id/complete` | Mark as completed (Doctor) | ✅ Doctor |
+
+</details>
+
+<details>
+<summary><b>🏥 Health Records</b> — <code>/api/v1/records</code></summary>
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `POST` | `/records/upload` | Upload a health record (PDF/image) | ✅ |
+| `GET` | `/records` | List all records | ✅ |
+| `GET` | `/records/:id` | Get a single record + AI analysis | ✅ |
+| `DELETE` | `/records/:id` | Delete a record | ✅ |
+| `GET` | `/records/:id/download` | Download the original file | ✅ |
+
+</details>
+
+<details>
+<summary><b>💳 Payments</b> — <code>/api/v1/payments</code></summary>
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `POST` | `/payments/order` | Create a Razorpay payment order | ✅ |
+| `POST` | `/payments/verify` | Verify HMAC signature & confirm | ✅ |
+| `POST` | `/payments/webhook` | Razorpay webhook handler | Signature |
+| `POST` | `/payments/refund` | Initiate a refund | ✅ |
+| `GET` | `/payments/invoice/:id` | Download PDF invoice | ✅ |
+
+</details>
+
+<details>
+<summary><b>👨‍⚕️ Doctors</b> — <code>/api/v1/doctors</code></summary>
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/doctors` | Search and filter doctors | ✅ |
+| `GET` | `/doctors/:id` | Doctor public profile | ✅ |
+| `GET` | `/doctors/:id/slots` | Available appointment slots | ✅ |
+| `GET` | `/doctors/dashboard` | Doctor stats & earnings | ✅ Doctor |
+| `GET` | `/doctors/patients` | Patient list for doctor | ✅ Doctor |
+| `GET` | `/doctors/patients/:id/360` | 360° patient view | ✅ Doctor |
+| `GET` | `/doctors/summaries` | AI-generated patient summaries | ✅ Doctor |
+
+</details>
+
+<details>
+<summary><b>🚨 Emergency, Notifications, Users, AI</b></summary>
+
+| Module | Key Endpoints |
+|--------|--------------|
+| Emergency | `POST /emergency/detect` — Triage and alert |
+| Notifications | `GET /notifications`, `PATCH /notifications/:id/read` |
+| Users | `GET /users/me`, `PATCH /users/me`, `DELETE /users/me` |
+| AI | `POST /ai/brief`, `POST /ai/extract-preview` |
+
+</details>
+
+---
+
+## 🔒 Security
+
+ArogyaAI implements defense-in-depth across every layer:
+
+| Defense | Implementation |
+|---------|---------------|
+| **Transport Security** | HSTS with 2-year max-age, preload-eligible |
+| **Content Security Policy** | Strict CSP with `frame-ancestors 'none'` |
+| **Rate Limiting** | Tiered: global (300/15min), auth (20/15min), AI (20/15min), uploads (10/15min) |
+| **JWT Rotation** | Short-lived access tokens (15min) + rotating refresh tokens (7 days) |
+| **OTP TTL** | MongoDB TTL index auto-expires OTPs |
+| **NoSQL Injection** | `express-mongo-sanitize` on all routes |
+| **Parameter Pollution** | `hpp` middleware on all routes |
+| **Payment Integrity** | HMAC-SHA256 webhook verification; replay attack prevention via orderId idempotency |
+| **File Uploads** | MIME type validation + 20MB per-file limit via Multer |
+| **CORS** | Strict allow-list; `null` origin explicitly rejected |
+| **Secrets Validation** | Server exits at startup if secrets are placeholder/missing/too short |
+
+---
+
+## 🧪 Testing
+
 ```bash
-cd server
-npm run dev        # Runs on http://localhost:5000
+# Run all tests
+cd server && npm test
+
+# Watch mode
+npm run test:watch
+
+# Coverage report
+npm run test:coverage
+
+# Lint
+npm run lint
+npm run lint:fix
 ```
 
-**Start the frontend (new terminal):**
-```bash
-cd client
-npm run dev        # Runs on http://localhost:3000
-```
-
-**Verify server is up:**
-```
-GET http://localhost:5000/health
-```
+Test structure lives in `server/src/__tests__/` and `server/test/`.
 
 ---
 
-## API Reference
+## 🚀 Deployment
 
-All endpoints are under `/api/v1`.
+### Environment Checklist
 
-### Authentication — `/auth`
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/auth/register` | Register (sends OTP email) |
-| POST | `/auth/login` | Login (sets JWT cookies) |
-| POST | `/auth/logout` | Clear auth cookies |
-| POST | `/auth/refresh` | Refresh access token |
-| POST | `/auth/verify-email` | Verify email OTP |
-| POST | `/auth/forgot-password` | Send reset email |
-| POST | `/auth/reset-password` | Reset password with token |
+- [ ] All `.env` variables filled — no placeholders
+- [ ] `NODE_ENV=production`
+- [ ] `REDIS_URL` set for distributed rate-limiting and reliable refund processing
+- [ ] MongoDB Atlas IP allow-list configured
+- [ ] Cloudinary signed uploads enabled
+- [ ] Razorpay webhook secret configured and endpoint verified
+- [ ] SMTP credentials tested (Gmail App Password recommended)
 
-### Users — `/users`
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/users/me` | Get current user profile |
-| PUT | `/users/profile` | Update profile |
-| PUT | `/users/avatar` | Upload avatar |
-| PUT | `/users/change-password` | Change password |
+### Production Notes
 
-### AI Chat — `/chat`
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/chat/sessions` | List chat sessions |
-| POST | `/chat/sessions` | Create new session |
-| GET | `/chat/sessions/:id` | Get session + messages |
-| POST | `/chat/sessions/:id/message` | Send message (Gemini reply) |
-| DELETE | `/chat/sessions/:id` | Delete session |
-
-### Appointments — `/appointments`
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/appointments` | Patient's appointments |
-| POST | `/appointments` | Book appointment |
-| GET | `/appointments/:id` | Appointment details |
-| PATCH | `/appointments/:id/cancel` | Cancel appointment |
-| GET | `/appointments/doctor` | Doctor's appointment list |
-| PATCH | `/appointments/:id/status` | Update status (doctor) |
-
-### Health Records — `/records`
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/records` | List records (filterable) |
-| POST | `/records/extract-preview` | Upload → OCR + AI (no save) |
-| POST | `/records/confirm` | Confirm extraction → save |
-| GET | `/records/:id` | Single record |
-| DELETE | `/records/:id` | Delete record |
-
-### Doctors — `/doctors`
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/doctors` | Search doctors |
-| GET | `/doctors/:id` | Doctor profile + availability |
-| GET | `/doctors/:id/slots` | Available time slots |
-| GET | `/doctors/patients` | Doctor's patients |
-| GET | `/doctors/patients/:id/360` | Patient 360° view |
-
-### Payments — `/payments`
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/payments/create-order` | Razorpay order for appointment |
-| POST | `/payments/verify` | Verify signature + mark paid |
-| GET | `/payments/invoice/:id` | Download PDF invoice |
-
-### Emergency — `/emergency`
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/emergency/analyze` | AI triage of symptoms/vitals |
-
-### Notifications — `/notifications`
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/notifications` | Get notifications |
-| PATCH | `/notifications/:id/read` | Mark as read |
-| PATCH | `/notifications/read-all` | Mark all as read |
+- **Logging:** Winston writes daily rotated logs — mount a persistent volume at your log directory.
+- **Redis:** Without `REDIS_URL`, BullMQ workers fall back to inline processing with no retry guarantees. Configure Redis in production.
+- **Scaling:** All rate limiters automatically use the Redis-backed store when `REDIS_URL` is present, enabling horizontal scaling across multiple server instances.
+- **Health Probes:** Use `/health` for liveness checks and `/readiness` for load-balancer or Kubernetes readiness probes.
 
 ---
 
-## Data Models
+## 🤝 Contributing
 
-### User
-```
-name, email, password (hashed, select:false), role (patient|doctor|admin),
-avatar, dateOfBirth, gender, phone, address, bloodGroup,
-allergies[], chronicConditions[], emergencyContact{name, relationship, phone},
-doctorProfile{
-  specialization, licenseNumber, experience, clinicName, clinicAddress,
-  consultationFee, availability{}, bio, languages[], rating, reviewCount
-},
-isEmailVerified, passwordResetToken, passwordResetExpires,
-refreshToken, lastLogin
-```
+Contributions are welcome! Please follow these steps:
 
-### Appointment
-```
-patient (ref:User), doctor (ref:User),
-date, startTime, endTime, type (in-person|video|phone),
-status (pending|confirmed|completed|cancelled|no-show),
-symptoms, notes, consultationFee,
-payment{ orderId, paymentId, status, signature (select:false), paidAt },
-reminderSent24h, reminderSent1h,
-prescription{ medications[], notes, followUpDate }
-```
+1. **Fork** the repository
+2. **Create** your feature branch: `git checkout -b feat/amazing-feature`
+3. **Commit** your changes: `git commit -m 'feat: add amazing feature'`
+4. **Push** to the branch: `git push origin feat/amazing-feature`
+5. **Open** a Pull Request
 
-### HealthRecord
-```
-user (ref:User), title, type (lab|prescription|imaging|other),
-fileUrl, fileName, fileType, fileSize,
-extractedData{ ...AI-structured fields with { value, confidence } },
-rawText (OCR), summary (AI), doctorSummary (AI clinical),
-doctorSummaryGeneratedAt
-```
-
-### ChatSession
-```
-user (ref:User), title,
-messages[{ role (user|model), content, timestamp }],
-lastActivity, isArchived
-```
-
-### Notification (TTL: 30 days)
-```
-user (ref:User), type, title, message, data{}, isRead, createdAt
-```
-
-### Otp (TTL: 10 minutes)
-```
-email, otp (hashed), purpose (email-verification|password-reset),
-expiresAt, attempts
-```
+Please make sure your code passes lint checks (`npm run lint`) and existing tests (`npm test`).
 
 ---
 
-## AI & ML Features
+## 📄 License
 
-### Gemini Model Fallback Chain
-On quota exhaustion (`429` / daily limit), the system automatically moves to the next model variant in the chain. Transient errors (5xx) trigger retries with backoff on the same model. Safety blocks are thrown immediately without retry.
-
-### Medical Record Extraction Flow
-```
-Upload (PDF / Image)
-        |
-Text Extraction
-  PDF  → pdf-parse
-  Image → Tesseract.js (OCR)
-        |
-Gemini AI Structured Extraction
-  Returns: { field: { value, confidence } }
-        |
-normalizeMedicalExtraction
-  (merges OCR raw text + AI output, fills gaps)
-        |
-extractionStore: idle → uploading → extracting → confirming
-        |
-User reviews fields in Confirmation Modal
-  (low-confidence fields highlighted for correction)
-        |
-POST /records/confirm → saved to MongoDB
-        |
-Async: generateAndSaveDoctorSummary
-  (Gemini clinical summary for doctors)
-```
-
-### Confidence Scoring
-| Level | Score | UI Treatment |
-|---|---|---|
-| High | >= 0.8 | Displayed normally |
-| Medium | >= 0.6 | Caution indicator |
-| Low | < 0.6 | Highlighted for user correction |
+This project is licensed under the **MIT License** — see the [LICENSE](./LICENSE) file for details.
 
 ---
 
-## Security
+<div align="center">
 
-| Mechanism | Implementation |
-|---|---|
-| HTTP Headers | Helmet with strict CSP |
-| CORS | Allowlist of frontend origins + credentials |
-| Rate Limiting | Global 300/15min, Auth 20/15min, AI 20/15min, Upload 10/15min, Payment 60/15min, Emergency 10/15min |
-| Auth Tokens | Short-lived JWT (15m) + refresh (7d) in HTTP-only signed cookies |
-| Passwords | Bcrypt hashing — never returned in queries |
-| NoSQL Injection | express-mongo-sanitize |
-| HTTP Param Pollution | HPP middleware |
-| Payment Replay | HMAC-SHA256 signature + idempotency check on orderId |
-| OTP | Hashed in DB + TTL index (10 min) + attempt limiting |
+### Built with ❤️ by Dhruv Nayak
 
----
+**🩺 ArogyaAI** — *Bridging AI and Healthcare for a Healthier Tomorrow*
 
-## Cron Jobs
+[![GitHub](https://img.shields.io/badge/GitHub-Follow-181717?style=for-the-badge&logo=github)](https://github.com/dhruvnayak001)
 
-Two automated reminder jobs run after the database connects:
-
-| Job | Schedule | Purpose |
-|---|---|---|
-| 24-hour reminder | Every hour at :00 | Email + in-app notification for appointments in 24–25 hours |
-| 1-hour reminder | Every 15 minutes | Email + in-app notification for appointments in 60–75 minutes |
-
-Duplicate sends are prevented by `reminderSent24h` / `reminderSent1h` boolean flags on the Appointment document.
-
----
-
-## Available Scripts
-
-### Server
-```bash
-npm run dev      # nodemon dev server (port 5000)
-npm start        # Production start
-npm run lint     # ESLint
-```
-
-### Client
-```bash
-npm run dev      # Vite dev server (port 3000)
-npm run build    # Production build → /dist
-npm run preview  # Preview production build locally
-npm run lint     # ESLint
-```
-
----
-
-## License
-
-Built for academic/demonstration purposes.
+</div>
