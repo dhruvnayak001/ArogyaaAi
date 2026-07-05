@@ -47,6 +47,8 @@ const validateEnv = () => {
     'EMAIL_PASS',
     'RAZORPAY_KEY_ID',
     'RAZORPAY_KEY_SECRET',
+    'RAZORPAY_WEBHOOK_SECRET',
+    'OTP_PEPPER',
   ];
 
   /* Placeholder values that indicate an unconfigured deploy */
@@ -83,6 +85,11 @@ const validateEnv = () => {
     if (MIN_SECRET_LENGTH[key] && val.length < MIN_SECRET_LENGTH[key]) {
       insecure.push(`${key} must be at least ${MIN_SECRET_LENGTH[key]} characters (got ${val.length})`);
     }
+  }
+
+  /* Production-specific: Redis is mandatory for reliable queue/refund processing */
+  if (process.env.NODE_ENV === 'production' && (!process.env.REDIS_URL || process.env.REDIS_URL.trim() === '')) {
+    missing.push('REDIS_URL (required in production for queue reliability)');
   }
 
   if (missing.length > 0 || insecure.length > 0) {
@@ -249,8 +256,19 @@ if (process.env.REDIS_URL) {
   }
 }
 
+/* passOnStoreError: true makes every limiter below FAIL OPEN when its Redis
+   store errors (connection drop, failover, timeout) — the request proceeds
+   without a rate-limit check instead of the store's error propagating into
+   Express's error handler as a 500. Without this, a transient Redis blip
+   turns rate limiting on '/api' (mounted ahead of every route) into a full
+   API outage for every user, on every endpoint, simultaneously. Losing rate
+   limiting for the duration of a Redis hiccup is an acceptable trade-off;
+   losing the entire API is not. */
+const RATE_LIMIT_DEFAULTS = { passOnStoreError: true };
+
 // Global rate limiter
 const globalLimiter = rateLimit({
+  ...RATE_LIMIT_DEFAULTS,
   windowMs: 15 * 60 * 1000, // 15 minutes
   max:      300,
   message:  { success: false, message: 'Too many requests. Please try again later.' },
@@ -262,6 +280,7 @@ app.use('/api', globalLimiter);
 
 // Auth-specific stricter limiter (login, register, forgot-password)
 const authLimiter = rateLimit({
+  ...RATE_LIMIT_DEFAULTS,
   windowMs: 15 * 60 * 1000,
   max:      20,
   message:  { success: false, message: 'Too many auth attempts. Please try again later.' },
@@ -272,6 +291,7 @@ const authLimiter = rateLimit({
 // Prevents the refresh path (called silently by the Axios interceptor)
 // from consuming the login budget and also limits brute-force on refresh tokens.
 const refreshLimiter = rateLimit({
+  ...RATE_LIMIT_DEFAULTS,
   windowMs: 15 * 60 * 1000,
   max:      10,
   message:  { success: false, message: 'Too many token refresh attempts. Please log in again.' },
@@ -282,6 +302,7 @@ const refreshLimiter = rateLimit({
 
 // AI endpoints limiter (Gemini quota protection)
 const aiLimiter = rateLimit({
+  ...RATE_LIMIT_DEFAULTS,
   windowMs: 15 * 60 * 1000,
   max:      20,
   message:  { success: false, message: 'Too many AI requests. Please wait before generating another brief.' },
@@ -290,8 +311,23 @@ const aiLimiter = rateLimit({
   store:           makeRateLimitStore('ai'),
 });
 
+// Chat endpoints limiter (Gemini quota protection — chat runs the full
+// model fallback chain per message, so it must not rely on the generic
+// globalLimiter budget alone, or a single chatty user can exhaust the
+// shared daily Gemini quota for the whole application).
+const chatLimiter = rateLimit({
+  ...RATE_LIMIT_DEFAULTS,
+  windowMs: 15 * 60 * 1000,
+  max:      60,
+  message:  { success: false, message: 'Too many chat messages. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders:   false,
+  store:           makeRateLimitStore('chat'),
+});
+
 // Upload / extract-preview limiter
 const uploadLimiter = rateLimit({
+  ...RATE_LIMIT_DEFAULTS,
   windowMs: 15 * 60 * 1000,
   max:      10,
   message:  { success: false, message: 'Upload limit reached. Please wait a few minutes before uploading again.' },
@@ -302,6 +338,7 @@ const uploadLimiter = rateLimit({
 
 // Payment limiter — prevent brute-force
 const paymentLimiter = rateLimit({
+  ...RATE_LIMIT_DEFAULTS,
   windowMs: 15 * 60 * 1000,
   max:      60,
   message:  { success: false, message: 'Too many payment requests. Please try again later.' },
@@ -441,7 +478,7 @@ app.use(`${API_PREFIX}/auth`,          authLimiter, authRoutes);
    count against the main authLimiter budget used by login/register. */
 app.use(`${API_PREFIX}/auth/refresh`,  refreshLimiter);
 app.use(`${API_PREFIX}/users`,         userRoutes);
-app.use(`${API_PREFIX}/chat`,          chatRoutes);
+app.use(`${API_PREFIX}/chat`,          chatLimiter, chatRoutes);
 app.use(`${API_PREFIX}/appointments`,  appointmentRoutes);
 app.use(`${API_PREFIX}/records`,       uploadLimiter, recordRoutes);
 app.use(`${API_PREFIX}/doctors`,       doctorRoutes);
@@ -477,6 +514,20 @@ const shutdown = async (signal) => {
       const { stopRefundWorker }       = require('./queues/workers/refund.worker');
       await Promise.all([stopEmailWorker(), stopNotificationWorker(), stopAiWorker(), stopRefundWorker()]);
     } catch { /* workers may not have started (no Redis) — safe to ignore */ }
+
+    /* Cooperatively close DB/Redis connections rather than relying on
+       process.exit() to tear down the sockets — matters in orchestrated
+       environments (k8s/ECS) that expect a clean shutdown sequence. */
+    try {
+      const mongoose = require('mongoose');
+      await mongoose.connection.close(false);
+    } catch { /* already closed / never connected */ }
+    try {
+      const { getRedisClient } = require('./config/redis');
+      const client = getRedisClient();
+      if (client) await client.quit();
+    } catch { /* Redis not configured / already closed */ }
+
     logger.info('HTTP server closed.');
     process.exit(0);
   });
@@ -484,6 +535,19 @@ const shutdown = async (signal) => {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT',  () => shutdown('SIGINT'));
+
+/* A synchronous throw anywhere outside Express's own request cycle (a timer
+   callback, a cron tick body, native-binding code) has no framework-level
+   catch. Node's default behavior is to dump to stderr and hard-exit with no
+   drain of in-flight requests or BullMQ workers. Route it through the same
+   graceful shutdown path as unhandledRejection, with a forced-exit fallback
+   in case server.close() itself hangs (e.g. a socket stuck half-open). */
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught Exception — shutting down:', err);
+  server.close(() => process.exit(1));
+  setTimeout(() => process.exit(1), 10000).unref();
+});
+
 process.on('unhandledRejection', (reason) => {
   const msg = (reason instanceof Error ? reason.message : String(reason)) || '';
 

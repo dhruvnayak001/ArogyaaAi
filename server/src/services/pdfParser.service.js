@@ -23,6 +23,12 @@ const logger = require('../config/logger');
 const pdfParseModule = require('pdf-parse');
 const pdfParse = pdfParseModule.default || pdfParseModule;
 
+/* Hard timeout for PDF parsing. A crafted PDF with deeply nested objects or
+   heavy compression can cause pdf-parse to block the event loop for 10+ seconds.
+   If parsing takes longer than this, it's safer to fall back to Gemini Vision
+   OCR than to block all other users' requests. */
+const PDF_PARSE_TIMEOUT_MS = 15000; // 15 seconds max per PDF
+
 /* Verify at load time that we have a callable function */
 if (typeof pdfParse !== 'function') {
   logger.error(
@@ -65,7 +71,18 @@ const extractFromPdf = async (buffer) => {
 
   try {
     const tStartParse = performance.now();
-    const data = await pdfParse(buffer, { max: 100 });
+
+    /* Race the parse against a hard timeout. pdf-parse is CPU-bound and can
+       block the event loop for 10+ seconds on a crafted/pathological PDF.
+       If it exceeds this threshold, we bail to OCR rather than blocking all
+       other users. Note: the background parse still runs, but at least this
+       request's user doesn't wait. */
+    const parsePromise = pdfParse(buffer, { max: 100 });
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`PDF parse timeout after ${PDF_PARSE_TIMEOUT_MS}ms`)), PDF_PARSE_TIMEOUT_MS)
+    );
+
+    const data = await Promise.race([parsePromise, timeoutPromise]);
     const tEndParse = performance.now();
 
     const raw       = data.text || '';
@@ -98,8 +115,13 @@ const extractFromPdf = async (buffer) => {
 
     return { text, pageCount, method: 'pdf-parse', needsOcr };
   } catch (err) {
-    logger.warn(`pdf-parse error: ${err.message} — routing to Gemini Vision OCR`);
-    return { text: '', pageCount: 0, method: 'pdf-parse-failed', needsOcr: true };
+    const msg = err.message || '';
+    const isTimeout = msg.includes('timeout');
+    const logLevel = isTimeout ? 'warn' : 'warn';
+    logger.warn(
+      `pdf-parse ${isTimeout ? 'timeout' : 'error'}: ${msg} — routing to Gemini Vision OCR`
+    );
+    return { text: '', pageCount: 0, method: isTimeout ? 'pdf-parse-timeout' : 'pdf-parse-failed', needsOcr: true };
   }
 };
 

@@ -11,10 +11,11 @@
 
 'use strict';
 
-const recordService = require('../services/record.service');
-const catchAsync    = require('../utils/catchAsync');
-const AppError      = require('../utils/AppError');
-const logger        = require('../config/logger');
+const recordService     = require('../services/record.service');
+const catchAsync        = require('../utils/catchAsync');
+const AppError          = require('../utils/AppError');
+const logger            = require('../config/logger');
+const extractionToken   = require('../utils/extractionToken');
 
 /* GET /records */
 const getRecords = catchAsync(async (req, res) => {
@@ -118,6 +119,19 @@ const extractPreview = catchAsync(async (req, res) => {
   /* Clean up buffer — not needed after extraction */
   delete file._buffer;
 
+  /* Sign the actual server-computed extraction result so /records/confirm-save
+     can verify this analysis really came from a real Gemini/OCR run for THIS
+     user, instead of trusting a client-echoed `extractedData` blob at face
+     value (which would let a client fabricate or hide medical findings). */
+  const token = extractionToken.sign({
+    userId:           req.user._id.toString(),
+    analysis:         result.analysis,
+    extractedText:    result.extractedText,
+    extractionMethod: result.extractionMethod,
+    ocrConfidence:    result.ocrConfidence,
+    pageCount:        result.pageCount,
+  });
+
   res.status(200).json({
     success: true,
     message: 'AI extraction complete. Please review and confirm.',
@@ -127,6 +141,7 @@ const extractPreview = catchAsync(async (req, res) => {
       ocrConfidence:    result.ocrConfidence,
       pageCount:        result.pageCount,
       analysis:         result.analysis,
+      extractionToken:  token,
       /* Metadata about uploaded file (for the confirm-save step) */
       fileInfo: {
         secure_url:        file.secure_url        || null,
@@ -152,7 +167,8 @@ const confirmSave = catchAsync(async (req, res) => {
     description,
     tags,
     notes,
-    extractedData,      // AI extraction result (from extract-preview response)
+    extractedData,      // AI extraction result (from extract-preview response) — NOT trusted, see below
+    extractionToken: extractionTokenValue, // signed token returned by extract-preview
     userCorrections,    // array of { field, aiValue, userValue }
     confirmedFields,    // user-edited final values
     fileInfo,           // Cloudinary file info from extract-preview response
@@ -160,6 +176,34 @@ const confirmSave = catchAsync(async (req, res) => {
 
   if (!title?.trim()) throw new AppError('Record title is required.', 400);
   if (!date)          throw new AppError('Record date is required.', 400);
+
+  /* A client can request confirm-save with no AI extraction at all (manual
+     record entry) — that's fine. But if it claims to carry AI-extracted
+     `analysis` content, that content MUST be backed by a signed token proving
+     it came from a real extract-preview call for THIS user; otherwise a
+     client could fabricate (or hide) medical findings that later flow
+     unmodified into a doctor-facing AI summary. */
+  let trustedExtractedData = null;
+  if (extractedData) {
+    if (!extractionTokenValue) {
+      throw new AppError('Missing extraction verification token. Please re-run AI extraction and try again.', 400);
+    }
+    const verified = extractionToken.verify(extractionTokenValue, req.user._id);
+    if (!verified) {
+      throw new AppError('Your extraction session has expired or is invalid. Please re-run AI extraction and try again.', 400);
+    }
+    /* Rebuild extractedData from the VERIFIED server payload — the client's
+       own `extractedData.analysis` is discarded entirely rather than merged,
+       so nothing attacker-controlled from the request body reaches storage
+       or the doctor-summary prompt. */
+    trustedExtractedData = {
+      analysis:         verified.analysis,
+      extractedText:    verified.extractedText,
+      extractionMethod: verified.extractionMethod,
+      ocrConfidence:    verified.ocrConfidence,
+      pageCount:        verified.pageCount,
+    };
+  }
 
   /* Reconstruct uploadedFile-like object from fileInfo (no re-upload needed) */
   /* MED-07: Validate that the secure_url belongs to our Cloudinary account.
@@ -191,7 +235,7 @@ const confirmSave = catchAsync(async (req, res) => {
     req.user._id,
     { title, type, date, description, tags, notes },
     uploadedFile,
-    extractedData,
+    trustedExtractedData,
     Array.isArray(userCorrections) ? userCorrections : [],
     confirmedFields || {}
   );

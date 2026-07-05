@@ -14,6 +14,28 @@ const { enqueueEmail, enqueueNotification, enqueueRefund } = require('../queues'
 const logger      = require('../config/logger');
 const { format }  = require('date-fns');
 
+/* Canonicalize a date to midnight UTC before every slot write/query. Without
+   this, two clients submitting the same calendar day with different
+   time-of-day components (e.g. timezone-naive frontends) are treated as
+   different `date` values — defeating both the double-booking unique index
+   and availability lookups, which rely on exact Date equality. */
+const normalizeDate = (d) => {
+  const x = new Date(d);
+  x.setUTCHours(0, 0, 0, 0);
+  return x;
+};
+
+/* Explicit appointment status state machine. Without this, a doctor could
+   flip a cancelled/completed appointment back to confirmed, or complete an
+   already-cancelled one, corrupting billing/refund state and re-triggering
+   confirmation notifications for a stale appointment. */
+const ALLOWED_STATUS_TRANSITIONS = {
+  pending:   ['confirmed', 'cancelled'],
+  confirmed: ['completed', 'cancelled'],
+  completed: [],
+  cancelled: [],
+};
+
 /* ════════════════════════════════════════
    GET APPOINTMENTS
    ════════════════════════════════════════ */
@@ -76,6 +98,9 @@ const getUpcomingAppointments = async (userId, userRole) => {
     /* Trim populate for list view — detail endpoint provides full data */
     .populate('uploadedReportIds', 'title type date analysis.severity')
     .sort({ date: 1 })
+    /* Hard cap so a high-volume doctor/clinic account can't pull an
+       unbounded result set on every dashboard load. */
+    .limit(100)
     .lean();
 };
 
@@ -89,6 +114,13 @@ const getAppointmentById = async (appointmentId, userId, userRole) => {
     .populate('uploadedReportIds', 'title type date fileUrl files analysis.severity analysis.summary doctorSummary');
 
   if (!appt) throw new AppError('Appointment not found.', 404);
+
+  /* A hard-deleted patient/doctor account leaves the corresponding populated
+     field as null — guard before dereferencing to avoid an unhandled 500 for
+     the other party still holding a reference to this appointment. */
+  if (!appt.patient || !appt.doctor) {
+    throw new AppError('This appointment references an account that no longer exists.', 410);
+  }
 
   const isOwner = userRole === 'patient'
     ? appt.patient._id.toString() === userId.toString()
@@ -137,7 +169,7 @@ const bookAppointment = async (patientId, payload) => {
   const duration = modeConfig?.duration || 30;
 
   /* 4. Check slot availability (only block if another paid/pending appointment exists) */
-  const appointmentDate = new Date(date);
+  const appointmentDate = normalizeDate(date);
   const existing = await Appointment.findOne({
     doctor: doctorId,
     date:   appointmentDate,
@@ -163,12 +195,16 @@ const bookAppointment = async (patientId, payload) => {
     validReportIds = owned.map((r) => r._id);
   }
 
-  /* 7. Generate invoice & receipt numbers */
-  const now        = new Date();
-  const monthStr   = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const uniqueSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
+  /* 7. Generate invoice & receipt numbers.
+     crypto.randomBytes gives a cryptographically strong, high-entropy suffix —
+     Math.random()'s ~36^5 keyspace made collisions (and their confusing
+     misattribution as "slot already booked") realistic at scale. */
+  const crypto      = require('crypto');
+  const now         = new Date();
+  const monthStr    = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const uniqueSuffix = crypto.randomBytes(5).toString('hex').toUpperCase();
   const invoiceNumber = `INV-${monthStr}-${uniqueSuffix}`;
-  const receiptNumber = `RCP-${Date.now().toString(36).toUpperCase()}`;
+  const receiptNumber = `RCP-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
   /* 8. Compute total */
   const totalAmount = consultationFee; // platform fee / tax = 0 for now
@@ -204,8 +240,17 @@ const bookAppointment = async (patientId, payload) => {
       receiptNumber,
     });
   } catch (err) {
-    /* MongoDB duplicate key — slot was taken by a concurrent booking */
+    /* MongoDB duplicate key — could be the slot-uniqueness index OR a
+       collision on the (low-entropy) invoiceNumber/receiptNumber unique
+       fields. Inspect which index actually fired before choosing the error
+       message so a receipt-number clash isn't misreported to the user as
+       "someone else booked your slot" and needlessly rejected. */
     if (err.code === 11000) {
+      const collidedField = Object.keys(err.keyPattern || {})[0];
+      if (collidedField === 'invoiceNumber' || collidedField === 'receiptNumber') {
+        logger.warn(`Invoice/receipt number collision on booking retry: doctor=${doctorId}, field=${collidedField}`);
+        throw new AppError('A temporary booking conflict occurred. Please try again.', 409);
+      }
       logger.warn(`Double-booking attempt blocked by index: doctor=${doctorId}, date=${appointmentDate}, time=${time}`);
       throw new AppError('This time slot was just booked by another patient. Please choose another slot.', 409);
     }
@@ -270,6 +315,11 @@ const updateAppointment = async (appointmentId, userId, userRole, updates) => {
   });
   if (updates.notes) appt.notes.patient = updates.notes;
 
+  /* Reschedules must use the same canonical date form as bookAppointment,
+     or the slot-uniqueness index can be bypassed by a differing time-of-day
+     component on an otherwise identical date/time. */
+  if (updates.date !== undefined) appt.date = normalizeDate(updates.date);
+
   /* Re-validate ownership of uploadedReportIds if they are being changed */
   if (Array.isArray(updates.uploadedReportIds) && updates.uploadedReportIds.length > 0) {
     const HealthRecord = require('../models/HealthRecord.model');
@@ -280,7 +330,19 @@ const updateAppointment = async (appointmentId, userId, userRole, updates) => {
     appt.uploadedReportIds = owned.map((r) => r._id);
   }
 
-  await appt.save();
+  /* If date/time changed, pre-check availability for a friendlier error, but
+     the real guarantee is the unique_active_slot index — catch its duplicate
+     key error the same way bookAppointment does instead of letting a raw
+     Mongo error surface as an unhandled 500. */
+  try {
+    await appt.save();
+  } catch (err) {
+    if (err.code === 11000) {
+      logger.warn(`Reschedule collision blocked by index: appointment=${appointmentId}, doctor=${appt.doctor}, date=${appt.date}, time=${appt.time}`);
+      throw new AppError('This time slot is already booked. Please choose another.', 409);
+    }
+    throw err;
+  }
   return appt;
 };
 
@@ -292,12 +354,31 @@ const updateAppointmentStatus = async (appointmentId, doctorId, payload) => {
   const VALID = ['confirmed', 'completed', 'cancelled'];
   if (!VALID.includes(status)) throw new AppError('Invalid status value.', 400);
 
-  const appt = await Appointment.findOne({ _id: appointmentId, doctor: doctorId })
-    .populate('patient', 'name email');
-  if (!appt) throw new AppError('Appointment not found.', 404);
+  const current = await Appointment.findOne({ _id: appointmentId, doctor: doctorId }).select('status');
+  if (!current) throw new AppError('Appointment not found.', 404);
 
-  appt.status = status;
-  if (notes) appt.notes.doctor = notes;
+  if (!ALLOWED_STATUS_TRANSITIONS[current.status]?.includes(status)) {
+    throw new AppError(`Cannot change status from ${current.status} to ${status}.`, 400);
+  }
+
+  /* Atomic compare-and-swap: filter re-asserts the exact prior status so a
+     concurrent write (e.g. the patient cancelling at the same moment) cannot
+     be silently lost — whichever write reaches Mongo first wins, and the
+     loser gets null back instead of clobbering the winner's state. */
+  const appt = await Appointment.findOneAndUpdate(
+    { _id: appointmentId, doctor: doctorId, status: current.status },
+    {
+      $set: {
+        status,
+        ...(notes ? { 'notes.doctor': notes } : {}),
+      },
+    },
+    { new: true }
+  ).populate('patient', 'name email');
+
+  if (!appt) {
+    throw new AppError('This appointment was modified concurrently. Please refresh and try again.', 409);
+  }
 
   if (status === 'confirmed') {
     const formattedDate = format(new Date(appt.date), 'PPP');
@@ -350,7 +431,6 @@ const updateAppointmentStatus = async (appointmentId, doctorId, payload) => {
     }).catch(() => {});
   }
 
-  await appt.save();
   return appt;
 };
 
@@ -358,29 +438,21 @@ const updateAppointmentStatus = async (appointmentId, doctorId, payload) => {
  * Cancel appointment (patient action)
  */
 const cancelAppointment = async (appointmentId, patientId, reason) => {
-  const appt = await Appointment.findOne({ _id: appointmentId, patient: patientId });
+  const appt = await Appointment.findOne({ _id: appointmentId, patient: patientId })
+    .populate('patient', 'name email')
+    .populate('doctor',  'name email doctorProfile.cancellationPolicy');
   if (!appt) throw new AppError('Appointment not found.', 404);
 
   if (['cancelled', 'completed'].includes(appt.status)) {
     throw new AppError(`Appointment is already ${appt.status}.`, 400);
   }
 
-  appt.status             = 'cancelled';
-  appt.cancelledBy        = 'patient';
-  appt.cancellationReason = reason || null;
-  appt.cancelledAt        = new Date();
-
-  /* In-app notification + Email for doctor (patient cancelled) */
-  const fmtDate    = format(new Date(appt.date), 'PPP');
-  const doctorId   = appt.doctor; // ObjectId — still unpopulated here
-  /* Populate doctor with cancellationPolicy so we can compute refund eligibility below */
-  const patientDoc = await appt.populate([
-    { path: 'patient', select: 'name email' },
-    { path: 'doctor',  select: 'name email doctorProfile.cancellationPolicy' },
-  ]);
+  const patientDoc  = appt;
   const patientName = patientDoc.patient?.name  || 'Patient';
   const doctorEmail = patientDoc.doctor?.email  || null;
   const doctorName  = patientDoc.doctor?.name   || 'Doctor';
+  const doctorId    = patientDoc.doctor?._id    || appt.doctor;
+  const fmtDate     = format(new Date(appt.date), 'PPP');
 
   /* ── Refund state machine (paid appointments only) ──────────────────────
      Reads the doctor's cancellationPolicy tiers to determine what percentage
@@ -392,6 +464,14 @@ const cancelAppointment = async (appointmentId, patientId, reason) => {
        moreThan24h:    % refund if cancelled > 24 h before appointment
        between12and24h: % refund if 12–24 h before
        lessThan12h:    % refund if < 12 h before                          */
+  const cancellationFields = {
+    status:             'cancelled',
+    cancelledBy:        'patient',
+    cancellationReason: reason || null,
+    cancelledAt:        new Date(),
+  };
+
+  let willRefund = false;
   if (appt.paymentStatus === 'paid') {
     const policy = patientDoc.doctor?.doctorProfile?.cancellationPolicy || {};
     const pctMoreThan24h    = typeof policy.moreThan24h    === 'number' ? policy.moreThan24h    : 100;
@@ -409,20 +489,37 @@ const cancelAppointment = async (appointmentId, patientId, reason) => {
       refundPct = pctLessThan12h;
     }
 
-    const baseAmount    = appt.totalAmount || appt.consultationFee || 0;
-    appt.refundAmount   = parseFloat(((baseAmount * refundPct) / 100).toFixed(2));
-    appt.refundStatus   = 'initiated';
+    const baseAmount = appt.totalAmount || appt.consultationFee || 0;
+    cancellationFields.refundAmount = parseFloat(((baseAmount * refundPct) / 100).toFixed(2));
+    cancellationFields.refundStatus = 'initiated';
+    willRefund = true;
 
     logger.info(
       `Refund initiated for appointment ${appointmentId}: ` +
       `hoursUntil=${hoursUntilAppt.toFixed(1)}, policy=${refundPct}%, ` +
-      `base=₹${baseAmount}, refund=₹${appt.refundAmount}`
+      `base=₹${baseAmount}, refund=₹${cancellationFields.refundAmount}`
     );
+  }
 
+  /* Atomic compare-and-swap: only persists if the appointment is still in a
+     cancellable state at write time. Guards against a lost update if the
+     doctor concurrently completes/cancels the same appointment between our
+     read above and this write. */
+  const updated = await Appointment.findOneAndUpdate(
+    { _id: appointmentId, patient: patientId, status: { $nin: ['cancelled', 'completed'] } },
+    { $set: cancellationFields },
+    { new: true }
+  );
+
+  if (!updated) {
+    throw new AppError('This appointment was already finalized. Please refresh and try again.', 409);
+  }
+
+  if (willRefund) {
     /* Hand off the actual Razorpay refund call to the refund worker (or run
        inline if Redis isn't configured) — non-blocking so cancellation
        doesn't wait on payment-gateway latency. */
-    enqueueRefund({ appointmentId: appt._id.toString(), reason: 'patient_cancelled' }).catch((err) =>
+    enqueueRefund({ appointmentId: updated._id.toString(), reason: 'patient_cancelled' }).catch((err) =>
       logger.warn(`Refund enqueue failed for appointment ${appointmentId}: ${err.message}`)
     );
   }
@@ -471,8 +568,7 @@ const cancelAppointment = async (appointmentId, patientId, reason) => {
     link:    '/doctor/dashboard',
   }).catch(() => {});
 
-  await appt.save();
-  return appt;
+  return updated;
 };
 
 /* ════════════════════════════════════════
@@ -495,7 +591,7 @@ const getAvailableSlots = async (doctorId, dateStr) => {
   const lunch    = avail.lunchBreak   || { enabled: false, start: '13:00', end: '14:00' };
 
   /* Check if this date is a working day */
-  const dateObj   = new Date(dateStr);
+  const dateObj   = normalizeDate(dateStr);
   const dayNames  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const dayOfWeek = dayNames[dateObj.getDay()];
   const isWorkingDay = workDays.length === 0 || workDays.includes(dayOfWeek);

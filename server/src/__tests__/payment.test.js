@@ -377,24 +377,58 @@ describe('appointment.service — refund state transitions on cancellation', () 
     return stub;
   };
 
+  /** Helper to create a chainable query for findOne(...).populate(...).populate(...) */
+  const chainableQuery = (stub) => {
+    const query = {
+      populate: jest.fn().mockReturnThis(),
+      then: (resolve, reject) => {
+        // When awaited (after all populate calls), resolve to the stub
+        stub.patient = { _id: PATIENT_ID, name: 'Test Patient', email: 'p@test.com' };
+        stub.doctor  = {
+          _id:   'doctor_DDD',
+          name:  'Dr. Jones',
+          email: 'dr@test.com',
+          doctorProfile: {
+            cancellationPolicy: stub._cancellationPolicy || {
+              moreThan24h:     100,
+              between12and24h: 50,
+              lessThan12h:     0,
+            },
+          },
+        };
+        return Promise.resolve(stub).then(resolve, reject);
+      },
+      catch: (reject) => Promise.resolve(stub).catch(reject),
+    };
+    return query;
+  };
+
   it('sets refundStatus=initiated and refundAmount=100% when cancelled >24 h before (default policy)', async () => {
     const stub = makeApptStub({
       date: new Date(Date.now() + 48 * 60 * 60 * 1000), // 48 h from now
     });
-    Appointment.findOne = jest.fn().mockResolvedValue(stub);
+    Appointment.findOne = jest.fn().mockReturnValue(chainableQuery(stub));
+    Appointment.findOneAndUpdate = jest.fn((filter, update) => {
+      // Apply the $set fields to the stub
+      if (update.$set) Object.assign(stub, update.$set);
+      return Promise.resolve(stub);
+    });
 
     await apptSvc.cancelAppointment('appt_cancel_001', PATIENT_ID, 'Test reason');
 
     expect(stub.refundStatus).toBe('initiated');
     expect(stub.refundAmount).toBe(1000); // 100% of 1000
-    expect(stub.save).toHaveBeenCalledTimes(1);
   });
 
   it('sets refundAmount=50% when cancelled 12–24 h before (between12and24h tier)', async () => {
     const stub = makeApptStub({
       date: new Date(Date.now() + 18 * 60 * 60 * 1000), // 18 h from now
     });
-    Appointment.findOne = jest.fn().mockResolvedValue(stub);
+    Appointment.findOne = jest.fn().mockReturnValue(chainableQuery(stub));
+    Appointment.findOneAndUpdate = jest.fn((filter, update) => {
+      if (update.$set) Object.assign(stub, update.$set);
+      return Promise.resolve(stub);
+    });
 
     await apptSvc.cancelAppointment('appt_cancel_001', PATIENT_ID, 'Test reason');
 
@@ -406,7 +440,11 @@ describe('appointment.service — refund state transitions on cancellation', () 
     const stub = makeApptStub({
       date: new Date(Date.now() + 6 * 60 * 60 * 1000), // 6 h from now
     });
-    Appointment.findOne = jest.fn().mockResolvedValue(stub);
+    Appointment.findOne = jest.fn().mockReturnValue(chainableQuery(stub));
+    Appointment.findOneAndUpdate = jest.fn((filter, update) => {
+      if (update.$set) Object.assign(stub, update.$set);
+      return Promise.resolve(stub);
+    });
 
     await apptSvc.cancelAppointment('appt_cancel_001', PATIENT_ID, 'Test reason');
 
@@ -419,7 +457,11 @@ describe('appointment.service — refund state transitions on cancellation', () 
       date:                new Date(Date.now() + 30 * 60 * 60 * 1000), // 30 h away
       _cancellationPolicy: { moreThan24h: 75, between12and24h: 25, lessThan12h: 0 },
     });
-    Appointment.findOne = jest.fn().mockResolvedValue(stub);
+    Appointment.findOne = jest.fn().mockReturnValue(chainableQuery(stub));
+    Appointment.findOneAndUpdate = jest.fn((filter, update) => {
+      if (update.$set) Object.assign(stub, update.$set);
+      return Promise.resolve(stub);
+    });
 
     await apptSvc.cancelAppointment('appt_cancel_001', PATIENT_ID, 'Custom policy test');
 
@@ -429,7 +471,11 @@ describe('appointment.service — refund state transitions on cancellation', () 
 
   it('does NOT set refundStatus when appointment was never paid', async () => {
     const stub = makeApptStub({ paymentStatus: 'pending' });
-    Appointment.findOne = jest.fn().mockResolvedValue(stub);
+    Appointment.findOne = jest.fn().mockReturnValue(chainableQuery(stub));
+    Appointment.findOneAndUpdate = jest.fn((filter, update) => {
+      if (update.$set) Object.assign(stub, update.$set);
+      return Promise.resolve(stub);
+    });
 
     await apptSvc.cancelAppointment('appt_cancel_001', PATIENT_ID, 'Unpaid cancel');
 
@@ -439,16 +485,19 @@ describe('appointment.service — refund state transitions on cancellation', () 
 
   it('throws 400 when appointment is already cancelled', async () => {
     const stub = makeApptStub({ status: 'cancelled' });
-    Appointment.findOne = jest.fn().mockResolvedValue(stub);
+    Appointment.findOne = jest.fn().mockReturnValue(chainableQuery(stub));
 
     await expect(
       apptSvc.cancelAppointment('appt_cancel_001', PATIENT_ID, 'Already done')
     ).rejects.toMatchObject({ statusCode: 400 });
-    expect(stub.save).not.toHaveBeenCalled();
   });
 
   it('throws 404 when appointment not found', async () => {
-    Appointment.findOne = jest.fn().mockResolvedValue(null);
+    Appointment.findOne = jest.fn().mockReturnValue({
+      populate: jest.fn().mockReturnThis(),
+      then: (resolve, reject) => Promise.resolve(null).then(resolve, reject),
+      catch: (reject) => Promise.resolve(null).catch(reject),
+    });
 
     await expect(
       apptSvc.cancelAppointment('appt_cancel_001', PATIENT_ID, 'Ghost')
@@ -462,7 +511,11 @@ describe('appointment.service — refund state transitions on cancellation', () 
       consultationFee: 999,
       _cancellationPolicy: { moreThan24h: 33, between12and24h: 10, lessThan12h: 0 },
     });
-    Appointment.findOne = jest.fn().mockResolvedValue(stub);
+    Appointment.findOne = jest.fn().mockReturnValue(chainableQuery(stub));
+    Appointment.findOneAndUpdate = jest.fn((filter, update) => {
+      if (update.$set) Object.assign(stub, update.$set);
+      return Promise.resolve(stub);
+    });
 
     await apptSvc.cancelAppointment('appt_cancel_001', PATIENT_ID, 'Decimal test');
 

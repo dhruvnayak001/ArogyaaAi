@@ -33,9 +33,16 @@ const AnalysisSchema = new mongoose.Schema({
   medicines:          [{ type: mongoose.Schema.Types.Mixed }], // supports { value, confidence } or string
   severity: {
     type:    String,
-    enum:    ['critical', 'high', 'moderate', 'low', 'normal'],
+    /* 'unknown' is a distinct sentinel for "AI analysis failed" — must never
+       be conflated with 'normal' (a genuine clean result). See
+       medicalAnalysis.service.js buildFallbackAnalysis*. */
+    enum:    ['critical', 'high', 'moderate', 'low', 'normal', 'unknown'],
     default: null,
   },
+  /* True when the AI analysis pipeline exhausted every model in the fallback
+     chain and could not produce a real result — the UI must surface this
+     distinctly from a genuine "normal" finding. */
+  analysisFailed:    { type: Boolean, default: false },
   suggestedFollowUp: { type: String, default: null },
   /* Key lab values extracted — can be { value, confidence } objects or flat strings */
   extractedValues: {
@@ -69,7 +76,8 @@ const UserCorrectionSchema = new mongoose.Schema({
 const DoctorSummarySchema = new mongoose.Schema({
   symptoms:           [{ type: String }],
   duration:           { type: String, default: null },
-  riskLevel:          { type: String, enum: ['Critical', 'High', 'Medium', 'Low'], default: 'Low' },
+  riskLevel:          { type: String, enum: ['Critical', 'High', 'Medium', 'Low', 'unknown'], default: 'Low' },
+  analysisFailed:     { type: Boolean, default: false },
   possibleConditions: [{ type: String }],
   suggestedTests:     [{ type: String }],
   clinicalNotes:      { type: String, default: null },
@@ -192,6 +200,8 @@ HealthRecordSchema.index({ user: 1, type: 1 });
 HealthRecordSchema.index({ 'sharedWith.doctor': 1 });
 HealthRecordSchema.index({ 'analysis.severity': 1 });
 HealthRecordSchema.index({ confirmationStatus: 1, user: 1 });
+// Index for date-based sorting in record listings
+HealthRecordSchema.index({ date: -1 });
 
 const HealthRecord = mongoose.model('HealthRecord', HealthRecordSchema);
 

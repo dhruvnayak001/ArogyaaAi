@@ -224,7 +224,7 @@ const forgotPassword = async (email) => {
 
   /* Always return success — don't reveal if email exists */
   if (!user) {
-    logger.info(`Password reset requested for unknown email: ${email}`);
+    logger.info(`Password reset requested`);
     return;
   }
 
@@ -238,13 +238,13 @@ const forgotPassword = async (email) => {
   try {
     const { subject, html } = templates.passwordReset(resetUrl);
     await sendEmail({ to: user.email, subject, html });
-    logger.info(`Password reset email sent to: ${user.email}`);
+    logger.info(`Password reset email sent [user: ${user._id}]`);
   } catch (err) {
     /* Rollback token if email fails */
     user.passwordResetToken   = undefined;
     user.passwordResetExpires = undefined;
     await user.save({ validateBeforeSave: false });
-    logger.error(`Password reset email failed for ${user.email}: ${err.message}`);
+    logger.error(`Password reset email failed [user: ${user._id}]: ${err.message}`);
     throw new AppError('Failed to send reset email. Please try again later.', 500);
   }
 };
@@ -292,7 +292,7 @@ const resetPassword = async (token, password) => {
   user.refreshToken = _hashToken(refreshToken);
   await user.save({ validateBeforeSave: false });
 
-  logger.info(`Password reset completed for: ${user.email}`);
+  logger.info(`Password reset completed [user: ${user._id}]`);
 
   return {
     user:        _sanitizeUser(user),

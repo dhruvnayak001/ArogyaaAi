@@ -27,8 +27,13 @@ const MAX_ATTEMPTS        = 5;
 const LOCKOUT_MINUTES     = 15;
 
 /* ── Helpers ── */
-const _hashOtp = (otp) =>
-  crypto.createHash('sha256').update(String(otp)).digest('hex');
+const _hashOtp = (otp) => {
+  const pepper = process.env.OTP_PEPPER || '';
+  if (!pepper && process.env.NODE_ENV === 'production') {
+    logger.error('[OTP] OTP_PEPPER not configured in production — HMAC will not include a pepper');
+  }
+  return crypto.createHmac('sha256', pepper).update(String(otp)).digest('hex');
+};
 
 const _generateOtp = () => {
   /* crypto.randomInt(min, max) → [min, max) — secure, uniform */

@@ -74,6 +74,36 @@ const createPaymentOrder = async (appointmentId, patientId) => {
 
   const rzp = getRazorpay();
 
+  /* ── Idempotency: reuse an existing live Razorpay order instead of creating
+     a new one. Without this, a double-click / network retry / concurrent tab
+     creates a second live Razorpay order; if the user pays against the
+     "orphaned" one, the DB write below would silently discard it, leaving a
+     captured payment with no confirmed appointment and no refund path. ── */
+  const previousOrderId = appt.orderId || null;
+  if (previousOrderId) {
+    try {
+      const existingOrder = await rzp.orders.fetch(previousOrderId);
+      if (existingOrder && existingOrder.status !== 'paid') {
+        logger.info(`[createPaymentOrder] Reusing existing order ${previousOrderId} for appointment ${appointmentId}`);
+        return {
+          orderId:       existingOrder.id,
+          amount:        existingOrder.amount,
+          currency:      existingOrder.currency,
+          keyId:         process.env.RAZORPAY_KEY_ID,
+          appointmentId: appt._id,
+          prefill: {
+            name:    appt.patient.name,
+            email:   appt.patient.email,
+            contact: appt.patient.phone || '',
+          },
+          notes: existingOrder.notes,
+        };
+      }
+    } catch (err) {
+      logger.warn(`[createPaymentOrder] Could not fetch existing order ${previousOrderId} (${err.message}) — creating a new one.`);
+    }
+  }
+
   /* Amount in paise (₹1 = 100 paise) */
   const amountPaise = Math.round((appt.totalAmount || appt.consultationFee || appt.fee || 0) * 100);
 
@@ -113,18 +143,21 @@ const createPaymentOrder = async (appointmentId, patientId) => {
     throw new AppError('Payment gateway error. Please try again.', 502);
   }
 
-  /* Persist orderId atomically — guarded so a concurrent cancellation or a
-     concurrent successful payment between the Razorpay call above and this
-     write can never be silently overwritten. */
+  /* Persist orderId atomically — guarded on the orderId value read at the top
+     of this function (compare-and-swap). This closes the duplicate-order race:
+     if a concurrent call already won and wrote a different orderId (or the
+     appointment became cancelled/paid) between our read and this write, this
+     update matches zero documents instead of silently overwriting the
+     winner's orderId and orphaning their live Razorpay order. */
   const persisted = await Appointment.findOneAndUpdate(
-    { _id: appt._id, status: { $ne: 'cancelled' }, paymentStatus: { $ne: 'paid' } },
+    { _id: appt._id, orderId: previousOrderId, status: { $ne: 'cancelled' }, paymentStatus: { $ne: 'paid' } },
     { $set: { orderId: order.id, amount: amountPaise, currency: 'INR' } },
     { new: true }
   );
 
   if (!persisted) {
-    logger.warn(`[createPaymentOrder] Appointment ${appointmentId} became cancelled/paid concurrently — order ${order.id} will remain unused.`);
-    throw new AppError('This appointment can no longer be paid for (it was cancelled or already paid).', 400);
+    logger.warn(`[createPaymentOrder] Appointment ${appointmentId} order state changed concurrently — order ${order.id} will remain unused.`);
+    throw new AppError('A payment for this appointment is already being processed, or it can no longer be paid for. Please refresh and try again.', 409);
   }
 
   logger.info(`Razorpay order created: ${order.id} for appointment ${appointmentId}`);
@@ -192,7 +225,12 @@ const verifyPayment = async (appointmentId, patientId, { razorpay_order_id, razo
   const body        = `${razorpay_order_id}|${razorpay_payment_id}`;
   const expectedSig = crypto.createHmac('sha256', secret).update(body).digest('hex');
 
-  if (expectedSig !== razorpay_signature) {
+  const expectedSigBuf = Buffer.from(expectedSig, 'utf8');
+  const givenSigBuf     = Buffer.from(String(razorpay_signature || ''), 'utf8');
+  const signatureValid  = expectedSigBuf.length === givenSigBuf.length &&
+    crypto.timingSafeEqual(expectedSigBuf, givenSigBuf);
+
+  if (!signatureValid) {
     logger.warn(`SUSPICIOUS: Payment signature mismatch for appointment ${appointmentId}. Possible fraud.`, {
       appointmentId, patientId, razorpay_order_id, razorpay_payment_id,
     });

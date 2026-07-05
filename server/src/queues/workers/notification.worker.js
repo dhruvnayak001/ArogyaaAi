@@ -5,8 +5,10 @@
  * Each job payload mirrors the args accepted by createNotification():
  *   { recipientId, type, title, message, data, link }
  *
- * createNotification() is already idempotent (Notification.create — no unique
- * index conflict risk), so retries are safe.
+ * createNotification() upserts on `dedupeKey` when the job payload carries
+ * enough context to build one (recipientId + type + data.appointmentId), so
+ * a job retried after a stalled/crashed worker cannot create a duplicate
+ * notification document.
  */
 
 'use strict';
@@ -32,7 +34,23 @@ const startNotificationWorker = () => {
       const { recipientId, type, title, message, data, link } = job.data;
       logger.info(`[NotifWorker] job=${job.id} type=${type} recipient=${recipientId}`);
 
-      await createNotification(recipientId, type, title, message, data, link);
+      /* Build a dedupe key when the payload has enough context — prevents a
+         duplicate notification if this job is retried after a stall. */
+      const dedupeKey = data?.appointmentId
+        ? `${recipientId}:${type}:${data.appointmentId}`
+        : null;
+
+      const notif = await createNotification(recipientId, type, title, message, data, link, dedupeKey);
+
+      /* createNotification() swallows its own DB errors and returns null so
+         fire-and-forget callers never throw. The queued path is different:
+         BullMQ's retry/backoff only engages if this handler throws, so a
+         null result here — meaning the write genuinely failed — must be
+         surfaced as a job failure, or the notification is silently and
+         permanently lost with the job still marked "completed". */
+      if (!notif) {
+        throw new Error(`createNotification returned null for recipient ${recipientId} (job=${job.id})`);
+      }
 
       logger.info(`[NotifWorker] ✅ Created job=${job.id}`);
     },

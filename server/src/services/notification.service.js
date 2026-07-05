@@ -14,7 +14,9 @@ const logger       = require('../config/logger');
 
 /**
  * Create a single notification.
- * Non-blocking — always resolves; logs on failure.
+ * Non-blocking (fire-and-forget callers) — always resolves; logs on failure.
+ * Callers that need failures to propagate (e.g. the BullMQ worker, so a
+ * retry actually happens) should check for a null return and throw.
  *
  * @param {string|ObjectId} recipientId
  * @param {string}          type        - Must match NOTIFICATION_TYPES enum
@@ -22,10 +24,23 @@ const logger       = require('../config/logger');
  * @param {string}          message
  * @param {object}          [data={}]   - Extra contextual payload
  * @param {string}          [link]      - Frontend route to navigate to
+ * @param {string|null}     [dedupeKey] - Idempotency key; when provided, a
+ *                                        retry with the same key upserts the
+ *                                        existing doc instead of duplicating it.
  * @returns {Promise<Document|null>}
  */
-const createNotification = async (recipientId, type, title, message, data = {}, link = null) => {
+const createNotification = async (recipientId, type, title, message, data = {}, link = null, dedupeKey = null) => {
   try {
+    if (dedupeKey) {
+      const notif = await Notification.findOneAndUpdate(
+        { dedupeKey },
+        { $setOnInsert: { recipient: recipientId, type, title, message, data, link, dedupeKey } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+      logger.info(`[NOTIF] Upserted "${type}" for user ${recipientId} (dedupeKey=${dedupeKey})`);
+      return notif;
+    }
+
     const notif = await Notification.create({
       recipient: recipientId,
       type,
@@ -37,6 +52,13 @@ const createNotification = async (recipientId, type, title, message, data = {}, 
     logger.info(`[NOTIF] Created "${type}" for user ${recipientId}`);
     return notif;
   } catch (err) {
+    /* A concurrent upsert racing on the same dedupeKey's unique index can
+       throw 11000 instead of resolving via findOneAndUpdate's own retry —
+       treat that as a successful dedupe, not a failure. */
+    if (err.code === 11000 && dedupeKey) {
+      logger.info(`[NOTIF] Duplicate suppressed for dedupeKey=${dedupeKey}`);
+      return Notification.findOne({ dedupeKey });
+    }
     logger.error(`[NOTIF] Failed to create notification: ${err.message}`);
     return null;
   }

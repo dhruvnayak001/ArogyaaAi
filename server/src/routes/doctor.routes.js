@@ -18,7 +18,7 @@ const express         = require('express');
 const router          = express.Router();
 const doctorCtrl      = require('../controllers/doctor.controller');
 const { protect, authorize, optionalAuth } = require('../middleware/auth.middleware');
-const { param, body } = require('express-validator');
+const { param, body, query } = require('express-validator');
 const validate        = require('../middleware/validate.middleware');
 
 /* ── Public routes ── */
@@ -96,6 +96,7 @@ router.get('/patients/:patientId/360',
   protect,
   authorize('doctor'),
   param('patientId').isMongoId().withMessage('Invalid patient ID'),
+  query('apptId').optional().isMongoId().withMessage('Invalid appointment ID'),
   validate,
   doctorCtrl.getPatient360
 );

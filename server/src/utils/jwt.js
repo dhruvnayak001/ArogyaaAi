@@ -40,19 +40,22 @@ const generateRefreshToken = (payload) =>
 
 /**
  * Verify an access token
+ * Restrict accepted algorithms to HS256 to prevent key-confusion attacks
+ * (e.g., a malicious JWT with alg:none or alg:RS256 if an RSA key is ever added).
  * @param {string} token
  * @returns {object} Decoded payload
  */
 const verifyAccessToken = (token) =>
-  jwt.verify(token, ACCESS_SECRET);
+  jwt.verify(token, ACCESS_SECRET, { algorithms: ['HS256'] });
 
 /**
  * Verify a refresh token
+ * Restrict accepted algorithms to HS256 (same defense as access tokens).
  * @param {string} token
  * @returns {object} Decoded payload
  */
 const verifyRefreshToken = (token) =>
-  jwt.verify(token, REFRESH_SECRET);
+  jwt.verify(token, REFRESH_SECRET, { algorithms: ['HS256'] });
 
 /**
  * Attach refresh token as httpOnly cookie and return access token

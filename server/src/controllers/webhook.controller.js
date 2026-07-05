@@ -18,6 +18,7 @@ const crypto        = require('crypto');
 const logger         = require('../config/logger');
 const WebhookEvent   = require('../models/WebhookEvent.model');
 const paymentService = require('../services/payment.service');
+const catchAsync     = require('../utils/catchAsync');
 
 /**
  * Constant-time HMAC-SHA256 signature comparison.
@@ -35,7 +36,14 @@ const isValidSignature = (rawBody, signature, secret) => {
   }
 };
 
-const handleRazorpayWebhook = async (req, res) => {
+/* Wrapped in catchAsync (same convention as every other route handler in the
+   app) so a synchronous throw or unguarded rejection anywhere in this
+   function — including in isValidSignature or any future edit — is routed
+   to the standard Express error handler instead of becoming an
+   unhandledRejection. Left un-wrapped, a single malformed webhook POST could
+   trip index.js's unhandledRejection handler, which calls process.exit(1)
+   and takes the whole server down for every user. */
+const handleRazorpayWebhook = catchAsync(async (req, res) => {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
   if (!secret) {
@@ -95,6 +103,6 @@ const handleRazorpayWebhook = async (req, res) => {
   }
 
   return res.status(200).json({ success: true });
-};
+});
 
 module.exports = { handleRazorpayWebhook };

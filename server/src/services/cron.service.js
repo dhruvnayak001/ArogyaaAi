@@ -207,9 +207,14 @@ const acquireCronLock = async (key, ttlMs) => {
     logger.info(`[CRON] Lock skipped: ${key} — held by another instance`);
     return { acquired: false, token: null };
   } catch (err) {
-    /* Redis error — log and allow execution rather than silently skip */
-    logger.warn(`[CRON] Redis lock error for ${key}: ${err.message} — running without lock`);
-    return { acquired: true, token: null };
+    /* Fail CLOSED, not open: if every server replica hits this branch at the
+       same tick (a Redis blip during a cron fire is entirely plausible),
+       running without a lock means every replica sends duplicate reminder
+       emails/notifications to every patient/doctor simultaneously. A missed
+       tick is cheap — reminderSent flags mean it retries cleanly next time —
+       duplicate emails to the whole user base are not. */
+    logger.warn(`[CRON] Redis lock error for ${key}: ${err.message} — skipping this tick`);
+    return { acquired: false, token: null };
   }
 };
 
@@ -310,7 +315,70 @@ const initCron = () => {
     timezone:  'Asia/Kolkata',
   });
 
-  logger.info('[CRON] ✅ Initialized: 24h reminder (every hour) + 1h reminder (every 15min)');
+  /* ── Refund reconciliation: runs every 30 minutes ──
+     Finds appointments stuck in refundStatus='initiated' or 'failed' and
+     attempts to recover them. Idempotent: re-enqueuing a refund that's
+     already in progress (or succeeded) is safe because the refund worker
+     re-fetches the appointment fresh and no-ops if status is 'processed'. */
+  let isRunningRefunds = false;
+  cron.schedule('*/30 * * * *', async () => {
+    if (isRunningRefunds) {
+      logger.warn('[CRON][refunds] Skipping tick — previous run still in progress');
+      return;
+    }
+
+    const lockKey = 'cron:lock:refunds';
+    const { acquired, token } = await acquireCronLock(lockKey, 28 * 60 * 1000);
+    if (!acquired) {
+      logger.info('[CRON][refunds] Skipping tick — another instance holds the lock');
+      return;
+    }
+
+    isRunningRefunds = true;
+    logger.info('[CRON] Running refund reconciliation job...');
+
+    try {
+      const stalnessThreshold = new Date(Date.now() - 30 * 60 * 1000); // 30 minutes ago
+
+      /* Find appointments that are stuck in initiated/failed states */
+      const stuckRefunds = await Appointment.find({
+        refundStatus: { $in: ['initiated', 'failed'] },
+        updatedAt:    { $lt: stalnessThreshold },
+      })
+        .select('_id refundStatus refundAmount paymentId updatedAt')
+        .lean();
+
+      if (stuckRefunds.length === 0) {
+        logger.info('[CRON][refunds] No stuck refunds found.');
+      } else {
+        logger.warn(`[CRON][refunds] Found ${stuckRefunds.length} stuck refund(s) — re-enqueueing...`);
+
+        const { enqueueRefund } = require('../queues');
+        for (const appt of stuckRefunds) {
+          try {
+            await enqueueRefund({
+              appointmentId: appt._id.toString(),
+              reason: appt.refundStatus === 'failed' ? 'reconciliation_retry' : 'stuck_initiated',
+            });
+            logger.info(`[CRON][refunds] Re-enqueued refund for appointment ${appt._id.toString()}`);
+          } catch (enqErr) {
+            logger.warn(`[CRON][refunds] Failed to re-enqueue ${appt._id.toString()}: ${enqErr.message}`);
+          }
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      }
+    } catch (err) {
+      logger.error(`[CRON][refunds] Reconciliation job error: ${err.message}`, { stack: err.stack });
+    } finally {
+      isRunningRefunds = false;
+      await releaseCronLock(lockKey, token);
+    }
+  }, {
+    scheduled: true,
+    timezone:  'Asia/Kolkata',
+  });
+
+  logger.info('[CRON] ✅ Initialized: 24h reminder (hourly) + 1h reminder (15min) + refund reconciliation (30min)');
 };
 
 module.exports = { initCron, acquireCronLock, releaseCronLock };

@@ -65,6 +65,17 @@ const NotificationSchema = new mongoose.Schema(
       type:    String,
       default: null,
     },
+
+    /* Optional idempotency key (e.g. `${recipientId}:${type}:${appointmentId}`).
+       Lets createNotification() upsert instead of blind-insert, so a BullMQ
+       job retried after a stalled/crashed worker (Notification.create()
+       already succeeded, but the job wasn't acknowledged in time) does not
+       produce a duplicate notification document. Sparse so notifications
+       created without a dedupeKey are unaffected. */
+    dedupeKey: {
+      type:   String,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -75,6 +86,7 @@ const NotificationSchema = new mongoose.Schema(
 /* ── Compound indexes ── */
 NotificationSchema.index({ recipient: 1, isRead: 1, createdAt: -1 });
 NotificationSchema.index({ recipient: 1, createdAt: -1 });
+NotificationSchema.index({ dedupeKey: 1 }, { unique: true, sparse: true });
 
 /* ── TTL: auto-delete after 90 days ── */
 NotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });

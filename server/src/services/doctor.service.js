@@ -511,9 +511,14 @@ const getPatient360 = async (doctorId, patientId, focusAppointmentId = null) => 
       .sort({ date: -1 })
       .lean(),
 
-    /* Focus appointment (the one being opened) */
+    /* Focus appointment (the one being opened). Scoped to THIS doctor/patient
+       pair — without this, any doctor with at least one legitimate patient
+       relationship could pass an arbitrary focusAppointmentId belonging to a
+       different patient/doctor and receive that appointment's symptoms,
+       notes, prescription, and linked report analysis (cross-patient PHI
+       disclosure / IDOR). */
     focusAppointmentId
-      ? Appointment.findById(focusAppointmentId)
+      ? Appointment.findOne({ _id: focusAppointmentId, doctor: doctorId, patient: patientId })
           .select('date time type status reason symptoms symptomTranscript aiConsultationBrief uploadedReportIds notes prescription')
           .populate('uploadedReportIds', 'title type date fileUrl files analysis.severity analysis.summary doctorSummary')
           .lean()

@@ -54,12 +54,17 @@ const isTransient = (msg, status) =>
   [500, 502, 503, 504].includes(status) || msg.includes('INTERNAL') || msg.includes('timeout');
 
 /**
- * Wraps a promise with a hard timeout. Rejects with AppError(503) when exceeded.
+ * Wraps a promise with a hard timeout and optional request abortion.
+ * Rejects with AppError(503) when exceeded.
+ * If an AbortController is provided, it will be aborted on timeout.
  */
-const withTimeout = (promise, ms, label) => {
+const withTimeout = (promise, ms, label, abortController = null) => {
   let timer;
   const timeout = new Promise((_resolve, reject) => {
     timer = setTimeout(() => {
+      if (abortController) {
+        abortController.abort();
+      }
       reject(new AppError(`${label} timed out after ${ms / 1000}s. Please try again.`, 503));
     }, ms);
   });
@@ -167,7 +172,13 @@ const _sendChatMessageInner = async (history = [], message) => {
         const model = getChatModel(modelName);
         const chat = model.startChat({ history });
 
-        const result = await chat.sendMessage(message);
+        const abortController = new AbortController();
+        const result = await withTimeout(
+          chat.sendMessage(message, { signal: abortController.signal }),
+          60_000,
+          `sendChatMessage[${modelName}]`,
+          abortController
+        );
         const response = await result.response;
         const aiText = response.text() || '(No response)';
 
@@ -246,15 +257,11 @@ const _sendChatMessageInner = async (history = [], message) => {
 };
 
 /**
- * sendChatMessage — public wrapper with 30s hard timeout.
- * Prevents long-running model fallback chains from blocking the event loop.
+ * sendChatMessage — public wrapper.
+ * _sendChatMessageInner already has per-model timeouts with request abortion.
  */
 const sendChatMessage = (history = [], message) =>
-  withTimeout(
-    _sendChatMessageInner(history, message),
-    60_000,
-    'AI chat request'
-  );
+  _sendChatMessageInner(history, message);
 
 /**
  * generateMedicalSummary
@@ -271,7 +278,9 @@ Generate a comprehensive medical summary for the following patient:
 - Allergies: ${patientInfo.allergies?.join(', ') || 'None documented'}
 
 **Health Records:**
+<USER_HEALTH_RECORDS>
 ${recordsText}
+</USER_HEALTH_RECORDS>
 
 Please provide:
 1. **Overview** — Brief health status summary
@@ -287,7 +296,13 @@ Be concise, clinically accurate, and use plain language.
     if (_isExhausted(modelName)) { logger.warn(`[GeminiService] ⚡ Skipping ${modelName} (exhausted cache)`); continue; }
     try {
       const model = getSummaryModel(modelName);
-      const result = await model.generateContent(prompt);
+      const abortController = new AbortController();
+      const result = await withTimeout(
+        model.generateContent(prompt, { signal: abortController.signal }),
+        30_000,
+        `generateMedicalSummary[${modelName}]`,
+        abortController
+      );
       const response = await result.response;
       return response.text();
     } catch (err) {
@@ -313,7 +328,9 @@ const analyzeEmergency = async (symptoms, context = {}) => {
   const prompt = `
 Emergency Triage Request:
 
-Symptoms: ${symptoms}
+<USER_SYMPTOMS>
+${symptoms}
+</USER_SYMPTOMS>
 ${context.age ? `Patient Age: ${context.age}` : ''}
 ${context.conditions ? `Known Conditions: ${context.conditions}` : ''}
 ${context.vitals ? `Vitals: ${context.vitals}` : ''}
@@ -332,7 +349,13 @@ Respond with a JSON object in this exact format (no markdown):
     if (_isExhausted(modelName)) { logger.warn(`[GeminiService] ⚡ Skipping ${modelName} (exhausted cache)`); continue; }
     try {
       const model = getEmergencyModel(modelName);
-      const result = await model.generateContent(prompt);
+      const abortController = new AbortController();
+      const result = await withTimeout(
+        model.generateContent(prompt, { signal: abortController.signal }),
+        20_000,
+        `analyzeEmergency[${modelName}]`,
+        abortController
+      );
       const response = await result.response;
       const text = response.text().trim();
 
@@ -376,7 +399,13 @@ const generateSessionTitle = async (firstMessage) => {
     try {
       const model = getChatModel(modelName);
       const prompt = `Generate a very short title (max 5 words, no quotes) for a medical chat session that starts with: "${firstMessage.slice(0, 100)}"`;
-      const result = await model.generateContent(prompt);
+      const abortController = new AbortController();
+      const result = await withTimeout(
+        model.generateContent(prompt, { signal: abortController.signal }),
+        10_000,
+        `generateSessionTitle[${modelName}]`,
+        abortController
+      );
       const response = await result.response;
       return response.text().trim().replace(/['"]/g, '').slice(0, 50);
     } catch (err) {
@@ -417,7 +446,8 @@ const generateConsultationBrief = async ({
      with 10 attached reports that blows the Gemini context budget.
      We keep only the clinically-relevant summary fields. */
   const reportContext = reportAnalyses.length > 0
-    ? reportAnalyses.map((r, i) => {
+    ? `<USER_HEALTH_REPORTS>\n` +
+      reportAnalyses.map((r, i) => {
         const slim = {
           summary:            r.summary            || null,
           severity:           r.severity           || null,
@@ -426,7 +456,8 @@ const generateConsultationBrief = async ({
           medicines:          (r.medicines          || []).slice(0, 5),
         };
         return `Report ${i + 1}:\n${JSON.stringify(slim)}`;
-      }).join('\n\n').slice(0, 8000)  // hard cap — prevent context overflow
+      }).join('\n\n').slice(0, 8000) +  // hard cap — prevent context overflow
+      `\n</USER_HEALTH_REPORTS>`
     : 'No reports uploaded.';
 
   const prompt = `
@@ -440,7 +471,9 @@ PATIENT INFORMATION:
 - Known Conditions: ${(patientInfo.chronicConditions || []).join(', ') || 'None documented'}
 
 PATIENT-REPORTED SYMPTOMS (may be in Hindi, Marathi, English, or mixed):
-"${symptomText || symptomTranscript || 'No symptoms provided'}"
+<USER_SYMPTOMS>
+${symptomText || symptomTranscript || 'No symptoms provided'}
+</USER_SYMPTOMS>
 
 UPLOADED HEALTH REPORTS:
 ${reportContext}
@@ -493,10 +526,12 @@ Rules:
         const model = getSummaryModel(modelName);
 
         /* Per-model hard timeout: 15s — if a model hangs we skip fast */
+        const abortController = new AbortController();
         const result = await withTimeout(
-          model.generateContent(prompt),
+          model.generateContent(prompt, { signal: abortController.signal }),
           15_000,
-          `consultationBrief[${modelName}]`
+          `consultationBrief[${modelName}]`,
+          abortController
         );
         const response = await result.response;
         const raw = response.text().trim();
@@ -594,4 +629,15 @@ module.exports = {
   analyzeEmergency,
   generateSessionTitle,
   generateConsultationBrief,
+  /* Shared fallback-chain internals — exposed so other services (e.g.
+     medicalAnalysis.service.js) can drive the same MODEL_CHAIN loop and
+     exhaustion cache instead of only ever calling MODEL_CHAIN[0]. */
+  isSafetyErr,
+  isQuotaErr,
+  isHardDailyQuota,
+  isModelNotFound,
+  isTransient,
+  isExhausted: _isExhausted,
+  markExhausted: _markExhausted,
+  withTimeout,
 };

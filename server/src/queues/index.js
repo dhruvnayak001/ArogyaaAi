@@ -19,6 +19,7 @@
 'use strict';
 
 const { Queue } = require('bullmq');
+const crypto    = require('crypto');
 const logger    = require('../config/logger');
 
 let emailQueue        = null;
@@ -96,7 +97,19 @@ const enqueueEmail = async (payload, inlineFallback) => {
     );
   }
   try {
-    await emailQueue.add('send', payload);
+    /* Deterministic jobId derived from the message content: if this exact
+       email is enqueued twice in quick succession (double-click, duplicate
+       cron dispatch) while the first job is still waiting/active, BullMQ
+       dedupes the second add() instead of sending the same email twice. This
+       does not cover a job that already completed and is later stalled/
+       redelivered (sendEmail itself is a non-idempotent SMTP call), but it
+       closes the much more common duplicate-enqueue case cheaply. */
+    const contentHash = crypto
+      .createHash('sha256')
+      .update(`${payload.to}|${payload.subject}|${payload.html || payload.text || ''}`)
+      .digest('hex')
+      .slice(0, 24);
+    await emailQueue.add('send', payload, { jobId: `email-${contentHash}` });
   } catch (err) {
     logger.warn(`[BullMQ email enqueue failed] ${err.message} — running inline`);
     return inlineFallback().catch(() => {});

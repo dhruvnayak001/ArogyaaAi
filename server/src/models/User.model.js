@@ -148,6 +148,8 @@ const UserSchema = new mongoose.Schema(
 UserSchema.index({ role:  1 });
 UserSchema.index({ 'doctorProfile.specialization': 1 });
 UserSchema.index({ createdAt: -1 });
+// Compound index for searchDoctors filtering on role + status + verification
+UserSchema.index({ role: 1, isActive: 1, isEmailVerified: 1 });
 
 /* ── Pre-save hook: hash password ── */
 UserSchema.pre('save', async function (next) {
