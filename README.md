@@ -18,7 +18,7 @@
 
 <!-- Badges -->
 <p align="center">
-  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-≥18.0-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js"/></a>
+  <a href="https://nodejs.org/en"><img src="https://img.shields.io/badge/Node.js-≥18.0-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js"/></a>
   <a href="https://react.dev"><img src="https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React"/></a>
   <a href="https://mongodb.com"><img src="https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB"/></a>
   <img src="https://img.shields.io/badge/Gemini-AI%20Powered-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Gemini AI"/>
@@ -26,11 +26,11 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Vite-5.4-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite"/>
-  <img src="https://img.shields.io/badge/TailwindCSS-3.4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind"/>
-  <img src="https://img.shields.io/badge/Express-4.x-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express"/>
-  <img src="https://img.shields.io/badge/Cloudinary-Storage-3448C5?style=for-the-badge&logo=cloudinary&logoColor=white" alt="Cloudinary"/>
-  <img src="https://img.shields.io/badge/License-MIT-a855f7?style=for-the-badge" alt="License"/>
+  <a href="https://vite.dev/"><img src="https://img.shields.io/badge/Vite-5.4-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite"/>
+  <a href="https://tailwindcss.com/"><img src="https://img.shields.io/badge/TailwindCSS-3.4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind"/>
+  <a href="https://expressjs.com/en/"><img src="https://img.shields.io/badge/Express-4.x-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express"/>
+  <a href="https://cloudinary.com/"><img src="https://img.shields.io/badge/Cloudinary-Storage-3448C5?style=for-the-badge&logo=cloudinary&logoColor=white" alt="Cloudinary"/>
+  <a href="https://github.com/dhruvnayak001/ArogyaaAi/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-a855f7?style=for-the-badge" alt="License"/>
 </p>
 
 <br/>
@@ -667,7 +667,7 @@ Before going live, verify:
 
 </div>
 
-We welcome contributions! Here's how to get started:
+Welcome contributions! Here's how to get started:
 
 ```bash
 # Fork the repo, then:
@@ -699,9 +699,12 @@ This project is licensed under the **MIT License**.
 
 <br/>
 
+<div align="center">
+
 [![GitHub](https://img.shields.io/badge/GitHub-dhruvnayak001-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/dhruvnayak001)
-&nbsp;&nbsp;
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](#)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Dhruv%20Nayak-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/dhruv-nayak-32a9682a8)
+
+</div>
 
 <br/>
 
