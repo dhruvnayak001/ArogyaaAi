@@ -1,7 +1,7 @@
 /**
  * api/axios.js
  * Configured Axios instance with:
- *  - Base URL routed through Vite dev proxy (/api/v1 → http://localhost:5000/api/v1)
+ *  - Base URL routed through Vite dev proxy (/api/v1 → https://arogyaaai.onrender.com/api/v1)
  *  - JWT auth header injection
  *  - Automatic silent token refresh on 401 with request queue
  *  - Centralized error normalization

@@ -8,7 +8,7 @@
 
 const http = require('http');
 
-const BASE = 'http://localhost:5000/api/v1';
+const BASE = 'https://arogyaaai.onrender.com/api/v1';
 const EMAIL = `test_${Date.now()}@arogyaai.dev`;
 
 function post(path, body) {

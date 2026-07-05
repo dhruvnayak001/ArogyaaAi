@@ -11,7 +11,7 @@ const axios = require('axios');
 const FormData = require('form-data');
 const fs = require('fs');
 const path = require('path');
-const BASE = 'http://localhost:5000/api/v1';
+const BASE = 'https://arogyaaai.onrender.com/api/v1';
 
 /* Create a tiny test PDF (just enough bytes for multer to accept) */
 const TINY_PDF = path.join(__dirname, '_test.pdf');

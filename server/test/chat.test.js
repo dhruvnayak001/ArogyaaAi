@@ -6,7 +6,7 @@
 'use strict';
 
 const axios = require('axios');
-const BASE = 'http://localhost:5000/api/v1';
+const BASE = 'https://arogyaaai.onrender.com/api/v1';
 const TEST_EMAIL    = `chattest_${Date.now()}@arogyaai.dev`;
 const TEST_PASSWORD = 'Test@123456';
 const TEST_NAME     = 'Chat Test User';

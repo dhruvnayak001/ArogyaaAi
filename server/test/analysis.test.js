@@ -11,7 +11,7 @@ const FormData = require('form-data');
 const fs       = require('fs');
 const path     = require('path');
 const PDFDoc   = require('pdfkit');
-const BASE     = 'http://localhost:5000/api/v1';
+const BASE     = 'https://arogyaaai.onrender.com/api/v1';
 
 /* ── Generate a proper PDF with a text layer using pdfkit ── */
 function makeLabReportPdf() {

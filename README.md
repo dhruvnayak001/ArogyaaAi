@@ -257,7 +257,7 @@ cp server/.env.example server/.env
 ### Run in Development
 
 ```bash
-# Terminal 1 — Backend (http://localhost:5000)
+# Terminal 1 — Backend (https://arogyaaai.onrender.com)
 cd server && npm run dev
 
 # Terminal 2 — Frontend (http://localhost:3000)
@@ -267,10 +267,10 @@ cd client && npm run dev
 ### Verify It's Running
 
 ```bash
-curl http://localhost:5000/health
+curl https://arogyaaai.onrender.com/health
 # {"success":true,"service":"ArogyaAI API","status":"healthy","version":"1.0.0"}
 
-curl http://localhost:5000/readiness
+curl https://arogyaaai.onrender.com/readiness
 # {"success":true,"status":"ready","checks":{"mongodb":{"status":"ok"},"gemini":{"status":"ok"}}}
 ```
 
@@ -407,7 +407,7 @@ ArogyaAI/
 
 </div>
 
-Base URL: `http://localhost:5000/api/v1`
+Base URL: `https://arogyaaai.onrender.com/api/v1`
 
 <details>
 <summary><b>🔐 Auth</b> &nbsp;—&nbsp; <code>/api/v1/auth</code></summary>

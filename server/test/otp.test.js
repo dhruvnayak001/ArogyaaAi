@@ -7,7 +7,7 @@
 'use strict';
 
 const axios = require('axios');
-const BASE  = 'http://localhost:5000/api/v1';
+const BASE  = 'https://arogyaaai.onrender.com/api/v1';
 const TS    = Date.now();
 
 async function run() {
