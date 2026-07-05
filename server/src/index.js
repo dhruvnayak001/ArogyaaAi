@@ -279,17 +279,28 @@ const globalLimiter = rateLimit({
 app.use('/api', globalLimiter);
 
 // Auth-specific stricter limiter (login, register, forgot-password)
+// Per-user rate limiting: track by email so multiple users on same IP aren't blocked by each other
 const authLimiter = rateLimit({
   ...RATE_LIMIT_DEFAULTS,
   windowMs: 15 * 60 * 1000,
   max:      20,
   message:  { success: false, message: 'Too many auth attempts. Please try again later.' },
   store:    makeRateLimitStore('auth'),
+  keyGenerator: (req, res) => {
+    // Use email as the rate-limit key (if provided in request body)
+    // This way, each user has their own limit regardless of IP
+    if (req.body?.email) {
+      return `auth:${req.body.email.toLowerCase()}`;
+    }
+    // Fallback to IP for requests without email
+    return req.ip;
+  },
 });
 
 // Refresh endpoint gets its own stricter limiter.
 // Prevents the refresh path (called silently by the Axios interceptor)
 // from consuming the login budget and also limits brute-force on refresh tokens.
+// Per-user limiting: track by user ID (from JWT) so multiple users aren't blocked by each other
 const refreshLimiter = rateLimit({
   ...RATE_LIMIT_DEFAULTS,
   windowMs: 15 * 60 * 1000,
@@ -298,6 +309,17 @@ const refreshLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders:   false,
   store:           makeRateLimitStore('refresh'),
+  keyGenerator: (req, res) => {
+    // Try to get user ID from the refresh cookie or JWT
+    // If no user, use IP as fallback
+    const cookies = req.cookies || {};
+    const userIdFromCookie = cookies.refreshToken; // contains user info if jwt
+    if (userIdFromCookie) {
+      return `refresh:${userIdFromCookie}`;
+    }
+    // Fallback to IP
+    return req.ip;
+  },
 });
 
 // AI endpoints limiter (Gemini quota protection)
