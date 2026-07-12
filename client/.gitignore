@@ -40,3 +40,5 @@ coverage/
 *.pem
 *.key
 .cache/
+
+.firebase/
